@@ -19,45 +19,45 @@
         <div class="identity-grid mb-8">
           <div
             class="identity-option scale-hover"
-            :class="{ 'identity-active': selectedIdentity === 'student' }"
+            :class="{ 'identity-active': selectedIdentity === 'user' }"
             @click="selectIdentity('user')"
           >
             <i
               class="fa fa-user-circle-o text-xl mb-1"
-              :class="selectedIdentity === 'student' ? 'text-primary' : 'text-gray-500'"
+              :class="selectedIdentity === 'user' ? 'text-primary' : 'text-gray-500'"
             ></i>
-            <span class="text-sm font-medium">学生</span>
+            <span class="text-sm font-medium">普通用户</span>
           </div>
           <div
             class="identity-option scale-hover"
-            :class="{ 'identity-active': selectedIdentity === 'secretary' }"
+            :class="{ 'identity-active': selectedIdentity === 'teach_sec' }"
             @click="selectIdentity('teach_sec')"
           >
             <i
               class="fa fa-briefcase text-xl mb-1"
-              :class="selectedIdentity === 'secretary' ? 'text-primary' : 'text-gray-500'"
+              :class="selectedIdentity === 'teach_sec' ? 'text-primary' : 'text-gray-500'"
             ></i>
             <span class="text-sm font-medium">教秘</span>
           </div>
           <div
             class="identity-option scale-hover"
-            :class="{ 'identity-active': selectedIdentity === 'classroomAdmin' }"
+            :class="{ 'identity-active': selectedIdentity === 'class_mgr' }"
             @click="selectIdentity('class_mgr')"
           >
             <i
               class="fa fa-cog text-xl mb-1"
-              :class="selectedIdentity === 'classroomAdmin' ? 'text-primary' : 'text-gray-500'"
+              :class="selectedIdentity === 'class_mgr' ? 'text-primary' : 'text-gray-500'"
             ></i>
             <span class="text-sm font-medium">教室管理员</span>
           </div>
           <div
             class="identity-option scale-hover"
-            :class="{ 'identity-active': selectedIdentity === 'superAdmin' }"
+            :class="{ 'identity-active': selectedIdentity === 'super_admin' }"
             @click="selectIdentity('super_admin')"
           >
             <i
               class="fa fa-shield text-xl mb-1"
-              :class="selectedIdentity === 'superAdmin' ? 'text-primary' : 'text-gray-500'"
+              :class="selectedIdentity === 'super_admin' ? 'text-primary' : 'text-gray-500'"
             ></i>
             <span class="text-sm font-medium">超级管理员</span>
           </div>
@@ -123,7 +123,8 @@
 <script>
   import axios from "axios";
   import { ElMessage } from "element-plus";
-
+  // 登录成功后添加
+  axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
   export default {
     data() {
       return {
@@ -159,12 +160,12 @@
         }
         // 临时测试账号逻辑（联调时需移除）
         // 临时测试账号：教秘身份的测试账号，无需后端验证直接登录
-        // if (this.selectedIdentity === 'secretary' && this.username === 'a' && this.password === '123456') {
+        // if (this.selectedIdentity === 'teach_sec' && this.username === 'a' && this.password === '123456') {
         //   this.isLoading = true;
         //   try {
         //     // 模拟登录成功
         //     const storage = this.rememberMe ? localStorage : sessionStorage;
-        //     storage.setItem('jwtToken', 'test_secretary_token');
+        //     storage.setItem('jwtToken', 'test_teach_sec_token');
 
         //     // 存储用户信息
         //     storage.setItem('currentUser', JSON.stringify({
@@ -208,6 +209,7 @@
             storage.setItem(
               "currentUser",
               JSON.stringify({
+                account: data.account,
                 username: data.name, // 从后端返回的userInfo中获取
                 identity: this.selectedIdentity,
                 name: data.name, // 匹配后端返回的姓名字段
@@ -220,10 +222,10 @@
             // 根据身份跳转对应页面
 
             const redirectMap = {
-              secretary: "/sec/listLogs", // 教秘跳转到审核工作台接口对应的页面
-              classroomAdmin: "/mgr/selectClassroom", // 教室管理员跳转到教室分页筛选接口对应的页面
-              superAdmin: "/admin/listUsers", // 超级管理员跳转到用户列表接口对应的页面
-              student: "/user/selectClassroom", // 学生跳转到查询教室接口对应的页面
+              teach_sec: "/sec/listLogs", // 教秘跳转到审核工作台接口对应的页面
+              class_mgr: "/mgr/selectClassroom", // 教室管理员跳转到教室分页筛选接口对应的页面
+              super_admin: "/admin/listUsers", // 超级管理员跳转到用户列表接口对应的页面
+              user: "/user/selectClassroom", // 普通用户跳转到查询教室接口对应的页面
             };
             // 确保路由存在再跳转
             const targetRoute = redirectMap[this.selectedIdentity];
@@ -246,10 +248,10 @@
       // 映射前端身份值到接口要求的user_type
       mapIdentityToApiType() {
         const mapping = {
-          student: "user",
-          secretary: "teach_sec",
-          classroomAdmin: "class_mgr",
-          superAdmin: "super_admin",
+          user: "user",
+          teach_sec: "teach_sec",
+          class_mgr: "class_mgr",
+          super_admin: "super_admin",
         };
         return mapping[this.selectedIdentity] || "user";
       },
