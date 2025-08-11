@@ -123,8 +123,12 @@
 <script>
   import axios from "axios";
   import { ElMessage } from "element-plus";
-  // 登录成功后添加
-  axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+ 
+   // 在Login.vue的script部分引入
+  import { setToken } from '../utils/auth'
+
+
+  
   export default {
     data() {
       return {
@@ -160,30 +164,30 @@
         }
         // 临时测试账号逻辑（联调时需移除）
         // 临时测试账号：教秘身份的测试账号，无需后端验证直接登录
-        // if (this.selectedIdentity === 'teach_sec' && this.username === 'a' && this.password === '123456') {
-        //   this.isLoading = true;
-        //   try {
-        //     // 模拟登录成功
-        //     const storage = this.rememberMe ? localStorage : sessionStorage;
-        //     storage.setItem('jwtToken', 'test_teach_sec_token');
+        if (this.selectedIdentity === 'teach_sec' && this.username === 'a' && this.password === '123456') {
+          this.isLoading = true;
+          try {
+            // 模拟登录成功
+            const storage = this.rememberMe ? localStorage : sessionStorage;
+            //storage.setItem('jwtToken', 'test_teach_sec_token');
+               setToken('test_teach_sec_token', this.rememberMe);
+            // 存储用户信息
+            storage.setItem('currentUser', JSON.stringify({
+              username: this.username,
+              identity: this.selectedIdentity,
+              name: '测试教秘',
+              college: '计算机学院'
+            }));
 
-        //     // 存储用户信息
-        //     storage.setItem('currentUser', JSON.stringify({
-        //       username: this.username,
-        //       identity: this.selectedIdentity,
-        //       name: '测试教秘',
-        //       college: '计算机学院'
-        //     }));
-
-        //     ElMessage.success('登录成功');
-        //     this.$router.push('/sec/listLogs');
-        //   } catch (error) {
-        //     ElMessage.error('登录失败');
-        //   } finally {
-        //     this.isLoading = false;
-        //   }
-        //   return;
-        // }
+            ElMessage.success('登录成功');
+            this.$router.push('/sec/listLogs');
+          } catch (error) {
+            ElMessage.error('登录失败');
+          } finally {
+            this.isLoading = false;
+          }
+          return;
+        }
 
         // 正常登录流程
         this.isLoading = true;
@@ -204,7 +208,9 @@
 
           if (code === 200) {
             // 存储JWT令牌
-            const storage = this.rememberMe ? localStorage : sessionStorage;
+            // const storage = this.rememberMe ? localStorage : sessionStorage;
+            // 登录成功后的存储逻辑（替换原来的storage.setItem）
+            setToken(data.token, this.rememberMe)
             storage.setItem("jwtToken", data.token); // 确保与后端token字段名一致
             storage.setItem(
               "currentUser",
