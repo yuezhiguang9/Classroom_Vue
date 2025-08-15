@@ -25,6 +25,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: "/sec/classroomUsage",
+      name: "ClassroomUsage",
+      component: () => import("../views/Secretary/ClassroomUsage.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
       //测试文件路径
       path: "/test/tests",
       component: () => import("../views/test.vue"),

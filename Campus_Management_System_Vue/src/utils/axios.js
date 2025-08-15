@@ -1,36 +1,67 @@
-// src/utils/axios.js（若不存在需创建）
-import axios from "axios";
-import { ElMessage } from "element-plus";
-import router from "../router";
+// src/axios.js
+import axios from 'axios';
+import { ElMessage } from 'element-plus';
 
-// 配置后端接口基础地址（与后端一致）
-const instance = axios.create({
-  baseURL: "/api", // 或从环境变量获取：import.meta.env.VITE_API_BASE_URL
-  timeout: 5000,
+// 创建 axios 实例，明确后端端口
+const service = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081', // 增加8080端口
+  
+  timeout: 5000 // 请求超时时间
 });
 
-// 请求拦截器：自动添加JWT令牌
-instance.interceptors.request.use((config) => {
-  const token = localStorage.getItem("jwtToken") || sessionStorage.getItem("jwtToken");
-  if (token) {
-    config.headers.Authorization = `${token}`; // 与后端约定的令牌格式
-  }
-  return config;
-});
-
-// 响应拦截器：处理令牌失效
-instance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      ElMessage.error("登录已过期，请重新登录");
-      // 清除失效的令牌和用户信息
-      localStorage.removeItem("jwtToken");
-      sessionStorage.removeItem("jwtToken");
-      router.push("/auth/login");
+// 请求拦截器
+service.interceptors.request.use(
+  config => {
+    // 从本地存储获取token
+    
+    const token = localStorage.getItem('jwtToken') || sessionStorage.getItem('jwtToken');
+    if (token) {
+      // 设置Authorization请求头
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
+  },
+  error => {
+    // 处理请求错误
+    console.error('请求错误:', error);
     return Promise.reject(error);
   }
 );
 
-export default instance;
+// 响应拦截器
+service.interceptors.response.use(
+  response => {
+    // 处理成功响应
+    const res = response.data;
+    
+    // 如果后端返回的状态码不是200，视为错误
+    if (res.code !== 200) {
+      ElMessage.error(res.message || '操作失败');
+      return Promise.reject(new Error(res.message || 'Error'));
+    } else {
+      return res;
+    }
+  },
+  error => {
+    // 处理响应错误
+    console.error('响应错误:', error);
+    
+    // 处理401未授权错误（登录过期）
+    if (error.response && error.response.status === 401) {
+      ElMessage.error('登录已过期，请重新登录');
+      // 清除本地存储的登录信息
+      localStorage.removeItem('jwtToken');
+      sessionStorage.removeItem('jwtToken');
+      localStorage.removeItem('currentUser');
+      sessionStorage.removeItem('currentUser');
+      // 跳转到登录页
+      window.location.href = '/auth/login';
+    } else {
+      ElMessage.error(error.message || '网络错误，请稍后重试');
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+export default service;
