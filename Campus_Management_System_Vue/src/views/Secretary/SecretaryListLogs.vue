@@ -42,15 +42,15 @@
             <span>审核教室申请</span>
           </router-link>
         
-           <router-link 
-            to="/sec/classroomUsage" 
-            class="sidebar-item" 
-            :class="{ active: $route.path === '/sec/classroomUsage' }"
-            >   
-          
-            <i class="fa fa-bar-chart mr-3 text-base"></i>
-            <span>教室使用率统计</span>
-          </router-link>
+          <router-link 
+          to="/sec/classroomUsage" 
+          class="sidebar-item" 
+          :class="{ active: $route.path === '/sec/classroomUsage' }"
+          @click.prevent="handleClassroomUsageClick" 
+        >    
+          <i class="fa fa-bar-chart mr-3 text-base"></i>
+          <span>教室使用率统计</span>
+        </router-link>
         </nav>
       </aside>
 
@@ -205,13 +205,12 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="application in filteredApplications" :key="application.apply_id" class="table-row">
+                  <tr v-for="application in filteredApplications" :key="application.book_time + application.user_name" class="table-row">
                     <td>
                       <div class="user-info">
-                        <img class="avatar" :src="`https://picsum.photos/200/200?random=${application.apply_id}`" alt="申请人头像">
+                        <img class="avatar" :src="`https://picsum.photos/200/200?random=${application.book_time}`" alt="申请人头像">
                         <div class="user-details">
                           <div class="username">{{ application.user_name }}</div>
-                          <div class="department">{{ application.department }}</div>
                         </div>
                       </div>
                     </td>
@@ -222,11 +221,11 @@
                         <div class="time">{{ formatTime(application.book_time) }}</div>
                       </div>
                     </td>
-                    <td>{{ application.classroom }}</td>
+                    <td>{{ application.building_name }}-{{ application.room_num }}</td>
                     <td>
                       <div class="time-info">
-                        <div class="date">{{ formatUseTimeDate(application.use_time) }}</div>
-                        <div class="time">{{ formatUseTimeRange(application.use_time) }}</div>
+                        <div class="date">{{ application.date }}</div>
+                        <div class="time">第{{ application.week }}周 {{ application.day_of_week }} {{ application.period }}</div>
                       </div>
                     </td>
                     <td>{{ application.purpose }}</td>
@@ -243,7 +242,7 @@
                     <td>
                       <button 
                         class="btn btn-primary btn-sm" 
-                        @click="openViewModal(application.apply_id)"
+                        @click="openViewModal(application)"
                       >
                         查看详情
                       </button>
@@ -312,11 +311,6 @@
           </div>
           
           <div class="detail-item">
-            <p class="detail-label">所属院系</p>
-            <p class="detail-value">{{ currentApplication.department }}</p>
-          </div>
-          
-          <div class="detail-item">
             <p class="detail-label">联系电话</p>
             <p class="detail-value">{{ currentApplication.phone }}</p>
           </div>
@@ -328,12 +322,14 @@
           
           <div class="detail-item">
             <p class="detail-label">申请教室</p>
-            <p class="detail-value">{{ currentApplication.classroom }}</p>
+            <p class="detail-value">{{ currentApplication.building_name }}-{{ currentApplication.room_num }}</p>
           </div>
           
           <div class="detail-item">
             <p class="detail-label">使用时间</p>
-            <p class="detail-value">{{ formatUseTime(currentApplication.use_time) }}</p>
+            <p class="detail-value">
+              {{ currentApplication.date }} 第{{ currentApplication.week }}周 {{ currentApplication.day_of_week }} {{ currentApplication.period }}
+            </p>
           </div>
           
           <div class="detail-item">
@@ -376,64 +372,99 @@
     </div>
   </div>
 </template>
-
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { ElMessage, ElLoading, ElMessageBox } from 'element-plus';
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import axios from 'axios';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { getToken, removeToken, getUserInfo, removeUserInfo } from '../../utils/auth';
 
-import axios from '@/utils/axios'
-// 路由实例
+// 格式化日期
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('zh-CN');
+};
+
+// 格式化时间
+const formatTime = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+};
+
+// 格式化日期时间
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }).replace(',', '');
+};
+
+// 路由与导航相关
 const router = useRouter();
 const route = useRoute();
 
-// 页面状态
-const isScrolled = ref(false);
-const sidebarOpen = ref(true);
-const isMobile = ref(window.innerWidth < 768);
+// 页面状态数据
+const logsData = ref([]);
+const total = ref(0); // 总记录数
+const loading = ref(false);
+const page = ref(1); // 当前页码
+const pageSize = ref(10); // 每页条数
+const isRefreshing = ref(false);
+const sidebarOpen = ref(true); // 侧边栏状态
+const isScrolled = ref(false); // 头部滚动状态
+const userInfo = ref(getUserInfo() || {}); // 用户信息
+const userAvatar = ref('https://picsum.photos/200/200?random=1'); // 默认头像
 
-// 用户信息
-const userInfo = ref({});
-const userAvatar = ref('https://picsum.photos/200/200');
-
-// 统计数据（与接口文档一致）
+// 统计数据
 const todayPending = ref(0);
-const yesterdayPending = ref(0);
 const weekApproved = ref(0);
-const lastWeekApproved = ref(0);
 const weekRejected = ref(0);
-const lastWeekRejected = ref(0);
-
-// 趋势数据变量
 const pendingTrend = ref(0);
 const approvedTrend = ref(0);
 const rejectedTrend = ref(0);
 
-// 筛选条件（严格遵循接口文档参数）
-const filter = ref({
-  user_name: '',      // 申请人姓名
-  building_id: '',    // 楼栋ID
-  apply_status: '',   // 审核状态
-  date_start: '',     // 开始日期
-  date_end: '',       // 结束日期
-  page: 1,            // 分页参数-当前页
-  size: 10            // 分页参数-每页条数
+// 筛选条件
+const filter = reactive({
+  user_name: '',
+  building_id: '',
+  apply_status: '',
+  date_start: '',
+  date_end: ''
 });
 
-// 楼栋列表（后端返回后自动填充）
-const buildings = ref([]);
-
-// 表格数据（字段名与接口文档完全一致）
-const applications = ref([]);
-const currentApplication = ref(null);
+// 模态框相关
 const viewModalOpen = ref(false);
-const currentApplyId = ref(null);
+const currentApplication = ref(null);
 const rejectReason = ref('');
 
-// 分页相关
-const page = ref(1);
-const pageSize = ref(10);
-const total = ref(0);
+// 教室与楼栋数据
+const buildings = ref([]); // 楼栋列表（从教室数据中提取）
+const classrooms = ref([]); // 教室列表
+
+// 计算过滤后的申请列表（分页处理）
+const filteredApplications = computed(() => {
+  // 先过滤
+  let filtered = logsData.value.filter(item => {
+    if (filter.user_name && !item.user_name.includes(filter.user_name)) return false;
+    if (filter.building_id && item.building_id !== filter.building_id) return false;
+    if (filter.apply_status && item.apply_status !== filter.apply_status) return false;
+    if (filter.date_start && new Date(item.date) < new Date(filter.date_start)) return false;
+    if (filter.date_end && new Date(item.date) > new Date(filter.date_end)) return false;
+    return true;
+  });
+  
+  // 再分页
+  const startIndex = (page.value - 1) * pageSize.value;
+  return filtered.slice(startIndex, startIndex + pageSize.value);
+});
 
 // 计算总页数
 const totalPages = computed(() => {
@@ -443,334 +474,84 @@ const totalPages = computed(() => {
 // 计算可见页码
 const visiblePages = computed(() => {
   const pages = [];
-  const maxVisible = 5;
-  let startPage = Math.max(1, page.value - Math.floor(maxVisible / 2));
-  const endPage = Math.min(totalPages.value, startPage + maxVisible - 1);
+  const maxShow = 5; // 最多显示5个页码
+  let start = Math.max(1, page.value - Math.floor(maxShow / 2));
+  let end = start + maxShow - 1;
   
-  // 调整起始页，确保显示足够的页码
-  startPage = Math.max(1, endPage - maxVisible + 1);
+  if (end > totalPages.value) {
+    end = totalPages.value;
+    start = Math.max(1, end - maxShow + 1);
+  }
   
-  for (let i = startPage; i <= endPage; i++) {
+  for (let i = start; i <= end; i++) {
     pages.push(i);
   }
   return pages;
 });
 
-// 筛选后的申请列表
-const filteredApplications = computed(() => {
-  return applications.value.filter(app => {
-    // 过滤掉用户已取消的申请（根据接口文档要求）
-    return app.user_cancel !== true;
-  });
+// 初始化页面
+onMounted(async () => {
+  // 监听滚动事件（控制头部样式）
+  window.addEventListener('scroll', handleScroll);
+  
+  // 验证登录状态
+  const token = getToken();
+  if (!token) {
+    ElMessage.error('您尚未登录，请先登录');
+    router.push('/auth/login');
+    return;
+  }
+
+  // 验证用户身份
+  const info = getUserInfo();
+  if (!info || info.identity !== 'teach_sec') {
+    ElMessage.error('您没有访问该页面的权限');
+    removeToken();
+    removeUserInfo();
+    router.push('/auth/login');
+    return;
+  }
+  userInfo.value = info;
+
+  // 加载数据
+  await Promise.all([
+    loadClassrooms(),
+    fetchLogs()
+  ]);
+  
+  // 计算统计数据
+  calculateStats();
+  
+  // 设置自动刷新定时器
+  window.logsTimer = setInterval(async () => {
+    if (!isRefreshing.value) {
+      await fetchLogs();
+      calculateStats();
+    }
+  }, 30000); // 每30秒刷新一次
 });
 
-// 格式化日期（yyyy-mm-dd）
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('zh-CN');
-};
-
-// 格式化时间（hh:mm）
-const formatTime = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-};
-
-// 格式化日期时间（yyyy-mm-dd hh:mm）
-const formatDateTime = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleString('zh-CN');
-};
-
-// 格式化使用时间中的日期部分
-const formatUseTimeDate = (useTimeString) => {
-  if (!useTimeString) return '';
-  // 假设格式为 "date+week+day_of_week+period"，提取date部分
-  return useTimeString.split('+')[0] || '';
-};
-
-// 格式化使用时间中的时间段部分
-const formatUseTimeRange = (useTimeString) => {
-  if (!useTimeString) return '';
-  // 假设格式为 "date+week+day_of_week+period"，提取period部分
-  return useTimeString.split('+')[3] || '';
-};
-
-// 完整格式化使用时间
-const formatUseTime = (useTimeString) => {
-  if (!useTimeString) return '';
-  const parts = useTimeString.split('+');
-  if (parts.length < 4) return useTimeString;
-  return `${parts[0]} ${parts[2]} ${parts[3]}`;
-};
-
-// 格式化趋势文本
-const formatTrendText = (trend, compareText) => {
-  if (trend === 0) {
-    return `与${compareText}持平`;
+// 页面卸载前清理
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', handleScroll);
+  if (window.logsTimer) {
+    clearInterval(window.logsTimer);
+    window.logsTimer = null;
   }
-  return `${trend > 0 ? '+' : ''}${trend} (${compareText})`;
-};
+});
 
-// 打开查看模态框（调用详情接口）
-const openViewModal = async (applyId) => {
-  currentApplyId.value = applyId;
-  rejectReason.value = '';
-  
-  const loading = ElLoading.service({
-    lock: true,
-    text: '加载详情中...',
-    target: '.modal-backdrop'
-  });
-  
-  try {
-    // 调用详情接口（严格遵循文档地址）
-    const response = await axios.get('/sec/viewLogs', {
-      params: { apply_id: applyId }
-    });
-    
-    currentApplication.value = response.data;
-    viewModalOpen.value = true;
-  } catch (error) {
-    ElMessage.error('获取详情失败，请重试');
-    console.error('获取详情失败:', error);
-  } finally {
-    loading.close();
+// 监听路由变化
+watch(
+  () => route.query,
+  () => {
+    page.value = 1;
+    fetchLogs();
   }
-};
+);
 
-// 关闭查看模态框
-const closeViewModal = () => {
-  viewModalOpen.value = false;
-  currentApplication.value = null;
-  currentApplyId.value = null;
-  rejectReason.value = '';
-};
-
-// 处理筛选条件变化
-const handleFilterChange = () => {
-  page.value = 1;
-  fetchApplications();
-};
-
-// 切换页码
-const changePage = (newPage) => {
-  if (newPage < 1 || newPage > totalPages.value) return;
-  page.value = newPage;
-  filter.value.page = newPage;
-  fetchApplications();
-};
-
-// 获取日期范围
-const getDateRanges = () => {
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  
-  // 本周开始和结束日期
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
-  const weekEnd = new Date(today);
-  weekEnd.setDate(weekStart.getDate() + 6);
-  
-  // 上周开始和结束日期
-  const lastWeekStart = new Date(weekStart);
-  lastWeekStart.setDate(weekStart.getDate() - 7);
-  const lastWeekEnd = new Date(weekEnd);
-  lastWeekEnd.setDate(weekEnd.getDate() - 7);
-  
-  // 格式化日期为yyyy-MM-dd
-  const format = (date) => date.toISOString().split('T')[0];
-  
-  return {
-    today: format(today),
-    yesterday: format(yesterday),
-    weekStart: format(weekStart),
-    weekEnd: format(weekEnd),
-    lastWeekStart: format(lastWeekStart),
-    lastWeekEnd: format(lastWeekEnd)
-  };
-};
-
-// 获取趋势对比数据
-const fetchTrendData = async () => {
-  const dates = getDateRanges();
-  
-  try {
-    // 获取昨日待审核数据
-    const yesterdayRes = await axios.get('/sec/listLogs', {
-      params: {
-        apply_status: '待审核',
-        date_start: dates.yesterday,
-        date_end: dates.yesterday,
-        page: 1,
-        size: 1
-      }
-    });
-    yesterdayPending.value = yesterdayRes.data.total || 0;
-    
-    // 获取上周通过数据
-    const lastWeekApprovedRes = await axios.get('/sec/listLogs', {
-      params: {
-        apply_status: '已通过',
-        date_start: dates.lastWeekStart,
-        date_end: dates.lastWeekEnd,
-        page: 1,
-        size: 1
-      }
-    });
-    lastWeekApproved.value = lastWeekApprovedRes.data.total || 0;
-    
-    // 获取上周驳回数据
-    const lastWeekRejectedRes = await axios.get('/sec/listLogs', {
-      params: {
-        apply_status: '已驳回',
-        date_start: dates.lastWeekStart,
-        date_end: dates.lastWeekEnd,
-        page: 1,
-        size: 1
-      }
-    });
-    lastWeekRejected.value = lastWeekRejectedRes.data.total || 0;
-    
-    // 计算趋势
-    pendingTrend.value = todayPending.value - yesterdayPending.value;
-    approvedTrend.value = weekApproved.value - lastWeekApproved.value;
-    rejectedTrend.value = weekRejected.value - lastWeekRejected.value;
-    
-  } catch (error) {
-    ElMessage.error('获取趋势数据失败');
-    console.error('获取趋势数据失败:', error);
-  }
-};
-
-// 获取楼栋列表
-const fetchBuildings = async () => {
-  try {
-    // 假设后端提供楼栋列表接口
-    const response = await axios.get('/sec/buildings');
-    buildings.value = response.data || [];
-  } catch (error) {
-    ElMessage.warning('获取楼栋列表失败');
-    console.error('获取楼栋列表失败:', error);
-  }
-};
-
-// 获取申请列表数据（严格遵循接口文档）
-const fetchApplications = async () => {
-  const loading = ElLoading.service({
-    lock: true,
-    text: '加载中...',
-    background: 'rgba(0, 0, 0, 0.7)'
-  });
-  
-  try {
-    const response = await axios.get('/sec/listLogs', {
-      params: {
-        ...filter.value,
-        page: page.value,
-        size: pageSize.value
-      }
-    });
-    
-    const data = response.data;
-    applications.value = data.list || [];
-    total.value = data.total || 0;
-    todayPending.value = data.today_pending || 0;
-    weekApproved.value = data.week_approved || 0;
-    weekRejected.value = data.week_rejected || 0;
-    
-    // 获取趋势数据
-    fetchTrendData();
-    
-  } catch (error) {
-    ElMessage.error('获取数据失败，请重试');
-    console.error('获取申请列表失败:', error);
-  } finally {
-    loading.close();
-  }
-};
-
-// 审核通过
-const handleApprove = async () => {
-  if (!currentApplyId.value) return;
-  
-  try {
-    await ElMessageBox.confirm(
-      '确定要通过该申请吗？',
-      '确认操作',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    );
-    
-    // 调用状态更新接口（严格遵循文档）
-    await axios.post('/sec/updateStatus', {
-      apply_id: currentApplyId.value,
-      apply_status: '已通过'
-    });
-    
-    ElMessage.success('审核已通过');
-    closeViewModal();
-    fetchApplications(); // 刷新列表
-  } catch (error) {
-    if (error === 'cancel') return; // 用户取消操作
-    ElMessage.error('操作失败，请重试');
-    console.error('审核通过失败:', error);
-  }
-};
-
-// 审核驳回
-const handleReject = async () => {
-  if (!currentApplyId.value) return;
-  
-  // 验证驳回原因
-  if (!rejectReason.value.trim()) {
-    return ElMessage.warning('请输入驳回原因');
-  }
-  
-  try {
-    await ElMessageBox.confirm(
-      '确定要驳回该申请吗？',
-      '确认操作',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    );
-    
-    // 调用状态更新接口（严格遵循文档，包含驳回原因）
-    await axios.post('/sec/updateStatus', {
-      apply_id: currentApplyId.value,
-      apply_status: '已驳回',
-      reject_reason: rejectReason.value.trim()
-    });
-    
-    ElMessage.success('已驳回申请');
-    closeViewModal();
-    fetchApplications(); // 刷新列表
-  } catch (error) {
-    if (error === 'cancel') return; // 用户取消操作
-    ElMessage.error('操作失败，请重试');
-    console.error('审核驳回失败:', error);
-  }
-};
-
-// 退出登录
-const handleLogout = () => {
-  // 清除登录状态
-  localStorage.removeItem('jwtToken');
-  sessionStorage.removeItem('jwtToken');
-  localStorage.removeItem('currentUser');
-  sessionStorage.removeItem('currentUser');
-  router.push('/auth/login');
-  ElMessage.success('已退出登录');
+// 处理滚动事件
+const handleScroll = () => {
+  isScrolled.value = window.scrollY > 10;
 };
 
 // 切换侧边栏
@@ -778,54 +559,255 @@ const toggleSidebar = () => {
   sidebarOpen.value = !sidebarOpen.value;
 };
 
-// 监听滚动事件
-const handleScroll = () => {
-  isScrolled.value = window.scrollY > 10;
+// 处理切换到教室使用率统计页面
+const handleClassroomUsageClick = () => {
+  // 导航完成后刷新页面
+  router.push('/sec/classroomUsage').then(() => {
+    window.location.reload();
+  });
 };
 
-// 监听窗口大小变化
-const handleResize = () => {
-  isMobile.value = window.innerWidth < 768;
-  
-  if (window.innerWidth >= 768) {
-    sidebarOpen.value = true;
-  } else {
-    sidebarOpen.value = false;
+// 加载教室列表（提取楼栋信息）
+const loadClassrooms = async () => {
+  try {
+    // 假设正确的教室列表接口地址
+    const response = await axios.get('/classroom/listAll');
+    if (response.data?.code === 200 && Array.isArray(response.data.data)) {
+      classrooms.value = response.data.data;
+      // 提取唯一楼栋
+      const buildingSet = new Set();
+      response.data.data.forEach(room => {
+        if (!buildingSet.has(room.building_id)) {
+          buildingSet.add(room.building_id);
+          buildings.value.push({
+            id: room.building_id,
+            name: room.building_name
+          });
+        }
+      });
+    } else {
+      ElMessage.warning('获取教室列表失败');
+    }
+  } catch (error) {
+    console.error('加载教室列表错误:', error);
+    ElMessage.error('加载教室列表时发生错误');
   }
 };
 
-// 初始化
-onMounted(() => {
-  // 获取用户信息
-  const userData = JSON.parse(localStorage.getItem('currentUser') || '{}');
-  userInfo.value = userData;
-  
-  // 加载楼栋列表
-  fetchBuildings();
-  
-  // 加载数据
-  fetchApplications();
-  
-  // 监听滚动
-  window.addEventListener('scroll', handleScroll);
-  
-  // 监听窗口大小变化
-  window.addEventListener('resize', handleResize);
-  handleResize(); // 初始化调用
-});
+// 获取申请日志数据
+const fetchLogs = async () => {
+  loading.value = true;
+  isRefreshing.value = true;
+  try {
+    // 确保参数格式正确，只传递有值的参数
+    const params = {
+      page: page.value,
+      size: pageSize.value,
+      ...(filter.user_name && { user_name: filter.user_name }),
+      ...(filter.building_id && { building_id: filter.building_id }),
+      ...(filter.apply_status && { apply_status: filter.apply_status }),
+      ...(filter.date_start && { date_start: filter.date_start }),
+      ...(filter.date_end && { date_end: filter.date_end })
+    };
 
-// 清理
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', handleScroll);
-  window.removeEventListener('resize', handleResize);
-});
+    const response = await axios.get('/sec/listLogs', { params });
+    
+    if (response.data?.code === 200) {
+      logsData.value = response.data.data?.records || [];
+      total.value = response.data.data?.total || 0;
+    } else {
+      ElMessage.warning(response.data?.msg || '获取申请数据失败');
+      logsData.value = [];
+      total.value = 0;
+    }
+  } catch (error) {
+    console.error('获取申请数据错误:', error);
+    ElMessage.error('获取申请数据时发生错误');
+  } finally {
+    loading.value = false;
+    isRefreshing.value = false;
+  }
+};
 
-// 监听路由变化
-watch(() => route.path, () => {
-  sidebarOpen.value = window.innerWidth >= 768;
-});
+// 获取申请详情（根据接口文档补充）
+const fetchApplicationDetail = async (applyId) => {
+  try {
+    const response = await axios.get('/sec/viewLogs', {
+      params: { apply_id: applyId }
+    });
+    
+    if (response.data?.code === 200) {
+      return response.data.data;
+    } else {
+      ElMessage.warning(response.data?.msg || '获取申请详情失败');
+      return null;
+    }
+  } catch (error) {
+    console.error('获取申请详情错误:', error);
+    ElMessage.error('获取申请详情时发生错误');
+    return null;
+  }
+};
+
+// 计算统计数据
+const calculateStats = () => {
+  const today = new Date().toISOString().split('T')[0];
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // 本周一
+  const lastWeekStart = new Date(weekStart);
+  lastWeekStart.setDate(lastWeekStart.getDate() - 7); // 上周一
+  const lastWeekEnd = new Date(lastWeekStart);
+  lastWeekEnd.setDate(lastWeekEnd.getDate() + 6); // 上周日
+
+  // 今日待审核
+  todayPending.value = logsData.value.filter(item => 
+    formatDate(item.book_time) === today && item.apply_status === '待审核'
+  ).length;
+
+  // 本周通过/驳回
+  weekApproved.value = logsData.value.filter(item => {
+    const itemDate = new Date(item.book_time);
+    return itemDate >= weekStart && item.apply_status === '已通过';
+  }).length;
+  
+  weekRejected.value = logsData.value.filter(item => {
+    const itemDate = new Date(item.book_time);
+    return itemDate >= weekStart && item.apply_status === '已驳回';
+  }).length;
+
+  // 环比上周（趋势计算）
+  const lastWeekApproved = logsData.value.filter(item => {
+    const itemDate = new Date(item.book_time);
+    return itemDate >= lastWeekStart && itemDate <= lastWeekEnd && item.apply_status === '已通过';
+  }).length;
+  
+  const lastWeekRejected = logsData.value.filter(item => {
+    const itemDate = new Date(item.book_time);
+    return itemDate >= lastWeekStart && itemDate <= lastWeekEnd && item.apply_status === '已驳回';
+  }).length;
+
+  approvedTrend.value = weekApproved.value - lastWeekApproved;
+  rejectedTrend.value = weekRejected.value - lastWeekRejected;
+  pendingTrend.value = 0; // 简化处理：实际应对比昨日待审核数
+};
+
+// 格式化趋势文本
+const formatTrendText = (trend, compared) => {
+  if (trend === 0) return `与${compared}持平`;
+  return `${trend > 0 ? '增加' : '减少'} ${Math.abs(trend)} 条`;
+};
+
+// 筛选条件变化
+const handleFilterChange = () => {
+  page.value = 1; // 重置到第一页
+  fetchLogs();
+};
+
+// 分页切换
+const changePage = (newPage) => {
+  if (newPage < 1 || newPage > totalPages.value) return;
+  page.value = newPage;
+  fetchLogs();
+  window.scrollTo(0, 0);
+};
+
+// 打开详情模态框
+const openViewModal = async (application) => {
+  // 调用详情接口获取完整信息
+  const detailData = await fetchApplicationDetail(application.apply_id);
+  currentApplication.value = detailData || { ...application };
+  rejectReason.value = ''; // 重置驳回原因
+  viewModalOpen.value = true;
+};
+
+// 关闭详情模态框
+const closeViewModal = () => {
+  viewModalOpen.value = false;
+  currentApplication.value = null;
+  rejectReason.value = '';
+};
+
+// 审核通过
+const handleApprove = async () => {
+  if (!currentApplication.value) return;
+  
+  try {
+    const response = await axios.post('/sec/updateStatus', {
+      apply_id: currentApplication.value.apply_id,
+      apply_status: '已通过'
+    });
+    
+    if (response.data?.code === 200) {
+      ElMessage.success('审核通过成功');
+      closeViewModal();
+      fetchLogs();
+      calculateStats();
+    } else {
+      ElMessage.error(response.data?.msg || '审核通过失败');
+    }
+  } catch (error) {
+    console.error('审核通过错误:', error);
+    ElMessage.error('审核操作失败');
+  }
+};
+
+// 审核驳回
+const handleReject = async () => {
+  if (!currentApplication.value) return;
+  if (!rejectReason.value.trim()) {
+    ElMessage.warning('请输入驳回原因');
+    return;
+  }
+  
+  try {
+    const response = await axios.post('/sec/updateStatus', {
+      apply_id: currentApplication.value.apply_id,
+      apply_status: '已驳回',
+      reject_reason: rejectReason.value
+    });
+    
+    if (response.data?.code === 200) {
+      ElMessage.success('驳回成功');
+      closeViewModal();
+      fetchLogs();
+      calculateStats();
+    } else {
+      ElMessage.error(response.data?.msg || '驳回失败');
+    }
+  } catch (error) {
+    console.error('驳回错误:', error);
+    ElMessage.error('驳回操作失败');
+  }
+};
+
+// 退出登录
+const handleLogout = async () => {
+  ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      // 调用退出登录API
+      await axios.post('/auth/logout');
+    } catch (error) {
+      console.error('退出登录API调用失败:', error);
+    } finally {
+      // 清除本地存储
+      removeToken();
+      removeUserInfo();
+      // 跳转到登录页并刷新
+      router.push('/auth/login').then(() => {
+        window.location.reload();
+      });
+      ElMessage.success('退出登录成功');
+    }
+  }).catch(() => {
+    // 取消退出
+    ElMessage.info('已取消退出');
+  });
+};
 </script>
-
 <style scoped>
 /* 引入与ClassroomUsage.vue一致的样式变量 */
 :root {

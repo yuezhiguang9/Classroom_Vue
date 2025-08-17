@@ -1,46 +1,83 @@
-// src/utils/auth.js
-
 /**
- * 获取存储的 JWT Token
- * 优先从 localStorage 获取（记住我），再从 sessionStorage 获取（临时登录）
- * @returns {string|null} token值或null
+ * 认证相关工具函数
+ * 统一处理Token和用户信息的存储、获取和删除
  */
-export function getToken() {
-  // 先检查localStorage
-  const localToken = localStorage.getItem('jwtToken')
-  if (localToken) {
-    return localToken
-  }
-  
-  // 再检查sessionStorage
-  const sessionToken = sessionStorage.getItem('jwtToken')
-  if (sessionToken) {
-    return sessionToken
-  }
-  
-  // 都没有则返回null
-  return null
-}
+
+// Token存储键名
+const TOKEN_KEY = 'token';
+// 用户信息存储键名
+const USER_INFO_KEY = 'userInfo';
 
 /**
- * 清除存储的 Token
- */
-export function removeToken() {
-  localStorage.removeItem('jwtToken')
-  sessionStorage.removeItem('jwtToken')
-}
-
-/**
- * 存储 Token
- * @param {string} token - JWT令牌
- * @param {boolean} remember - 是否持久化存储（true存localStorage，false存sessionStorage）
+ * 设置Token
+ * @param {string} token - 要存储的Token
+ * @param {boolean} remember - 是否持久化存储（true: localStorage, false: sessionStorage）
  */
 export function setToken(token, remember = false) {
   if (remember) {
-    localStorage.setItem('jwtToken', token)
-    sessionStorage.removeItem('jwtToken') // 清除可能存在的临时存储
+    localStorage.setItem(TOKEN_KEY, token);
   } else {
-    sessionStorage.setItem('jwtToken', token)
-    localStorage.removeItem('jwtToken') // 清除可能存在的持久化存储
+    sessionStorage.setItem(TOKEN_KEY, token);
   }
 }
+
+/**
+ * 获取Token
+ * @returns {string|null} - 存储的Token或null
+ */
+export function getToken() {
+  // 先查sessionStorage，再查localStorage
+  return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || null;
+}
+
+/**
+ * 移除Token
+ */
+export function removeToken() {
+  localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+}
+
+/**
+ * 设置用户信息
+ * @param {object} userInfo - 用户信息对象
+ * @param {boolean} remember - 是否持久化存储
+ */
+export function setUserInfo(userInfo, remember = false) {
+  const storage = remember ? localStorage : sessionStorage;
+  storage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+}
+
+/**
+ * 获取用户信息
+ * @returns {object|null} - 用户信息对象或null
+ */
+export function getUserInfo() {
+  const userStr = sessionStorage.getItem(USER_INFO_KEY) || localStorage.getItem(USER_INFO_KEY);
+  if (userStr) {
+    try {
+      return JSON.parse(userStr);
+    } catch (e) {
+      console.error('解析用户信息失败:', e);
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * 移除用户信息
+ */
+export function removeUserInfo() {
+  localStorage.removeItem(USER_INFO_KEY);
+  sessionStorage.removeItem(USER_INFO_KEY);
+}
+
+/**
+ * 清除所有认证信息（退出登录用）
+ */
+export function clearAuthInfo() {
+  removeToken();
+  removeUserInfo();
+}
+    
