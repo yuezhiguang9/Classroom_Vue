@@ -121,11 +121,9 @@
 </template>
 
 <script>
-  import axios from "axios";
   import { ElMessage } from "element-plus";
-
-  // 在Login.vue的script部分引入
-  import { setToken } from "../utils/auth";
+  import request from "@/utils/request";
+  import { setToken } from "@/utils/auth";
 
   export default {
     data() {
@@ -161,7 +159,6 @@
           return;
         }
         // 临时测试账号逻辑（联调时需移除）
-        // 临时测试账号：教秘身份的测试账号，无需后端验证直接登录
         if (
           this.selectedIdentity === "teach_sec" &&
           this.username === "a" &&
@@ -169,16 +166,14 @@
         ) {
           this.isLoading = true;
           try {
-            // 模拟登录成功
-            const storage = this.rememberMe ? localStorage : sessionStorage;
-            //storage.setItem('jwtToken', 'test_teach_sec_token');
             setToken("test_teach_sec_token", this.rememberMe);
-            // 存储用户信息
+            const storage = this.rememberMe ? localStorage : sessionStorage;
             storage.setItem(
               "currentUser",
               JSON.stringify({
                 username: this.username,
                 identity: this.selectedIdentity,
+                role: this.selectedIdentity, // 添加role字段
                 name: "测试教秘",
                 college: "计算机学院",
               })
@@ -196,55 +191,43 @@
 
         // 正常登录流程
         this.isLoading = true;
-        console.log("user_type:", this.mapIdentityToApiType());
-        console.log("account:", this.username);
-        console.log("password:", this.password);
         try {
-          // 调用登录接口
-          const response = await axios.post("http://localhost:8080/auth/login", {
+          const response = await request.post("/auth/login", {
             user_type: this.mapIdentityToApiType(),
             account: this.username,
             password: this.password,
           });
-          console.log("response:", response.data);
-          const code = response.data.code;
-          const message = response.data.msg;
-          const data = response.data.data;
+          // 使用 request 封装后返回的是 res.data 已经解包
+          const code = response.code;
+          const message = response.msg || response.message;
+          const data = response.data;
 
           if (code === 200) {
-            // 存储JWT令牌
-            const storage = this.rememberMe ? localStorage : sessionStorage;
-            // 登录成功后的存储逻辑（替换原来的storage.setItem）
+            // 统一保存token
             setToken(data.token, this.rememberMe);
-            storage.setItem("jwtToken", data.token); // 确保与后端token字段名一致
+            const storage = this.rememberMe ? localStorage : sessionStorage;
             storage.setItem(
               "currentUser",
               JSON.stringify({
                 account: data.account,
-                username: data.name, // 从后端返回的userInfo中获取
+                username: data.name,
                 identity: this.selectedIdentity,
-                name: data.name, // 匹配后端返回的姓名字段
-                college: data.college || "", // 兼容可能不存在的字段
+                role: this.selectedIdentity, // 新增 role 字段，保持与 identity 一致
+                name: data.name,
+                college: data.college || "",
               })
             );
-            console.log("selectedIdentity", this.selectedIdentity);
 
             ElMessage.success(message || "登录成功");
 
-            // 根据身份跳转对应页面
-
             const redirectMap = {
-              teach_sec: "/sec/listLogs", // 教秘跳转到审核工作台接口对应的页面
-              class_mgr: "/mgr/selectClassroom", // 教室管理员跳转到教室分页筛选接口对应的页面
-              super_admin: "/admin/listUsers", // 超级管理员跳转到用户列表接口对应的页面
-              user: "/user/selectClassroom", // 普通用户跳转到查询教室接口对应的页面
+              teach_sec: "/sec/listLogs",
+              class_mgr: "/mgr/selectClassroom",
+              super_admin: "/admin/users", // 修正跳转路径
+              user: "/user/selectClassroom",
             };
-            // 确保路由存在再跳转
             const targetRoute = redirectMap[this.selectedIdentity];
-            console.log("targetRoute:", targetRoute);
-
             const resolved = this.$router.resolve(targetRoute);
-            console.log("resolved:", resolved);
             if (resolved.path.length > 0) {
               this.$router.push(targetRoute);
             } else {
@@ -255,7 +238,7 @@
           }
         } catch (error) {
           console.error("登录请求失败:", error);
-          const errorMsg = error.response?.data?.message || "网络错误，请稍后重试";
+          const errorMsg = error.response?.data?.message || error.message || "网络错误，请稍后重试";
           ElMessage.error(errorMsg);
         } finally {
           this.isLoading = false;

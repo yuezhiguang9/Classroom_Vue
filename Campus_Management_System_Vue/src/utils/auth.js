@@ -1,46 +1,41 @@
-// src/utils/auth.js
+/**
+ * 认证工具模块
+ * 统一管理用户token的存储、获取和清除
+ */
+
+const TOKEN_KEY = 'jwtToken';
 
 /**
- * 获取存储的 JWT Token
- * 优先从 localStorage 获取（记住我），再从 sessionStorage 获取（临时登录）
- * @returns {string|null} token值或null
+ * 设置token到localStorage或sessionStorage
+ * @param {string} token - JWT token
+ * @param {boolean} remember - 是否记住（true使用localStorage，false使用sessionStorage）
+ */
+export function setToken(token, remember = false) {
+  const storage = remember ? localStorage : sessionStorage;
+  storage.setItem(TOKEN_KEY, token);
+}
+
+/**
+ * 获取token
+ * @returns {string|null} - 返回token或null
  */
 export function getToken() {
-    // 先检查localStorage
-    const localToken = localStorage.getItem('jwtToken')
-    if (localToken) {
-      return localToken
-    }
-    
-    // 再检查sessionStorage
-    const sessionToken = sessionStorage.getItem('jwtToken')
-    if (sessionToken) {
-      return sessionToken
-    }
-    
-    // 都没有则返回null
-    return null
-  }
-  
-  /**
-   * 清除存储的 Token
-   */
-  export function removeToken() {
-    localStorage.removeItem('jwtToken')
-    sessionStorage.removeItem('jwtToken')
-  }
-  
-  /**
-   * 存储 Token
-   * @param {string} token - JWT令牌
-   * @param {boolean} remember - 是否持久化存储（true存localStorage，false存sessionStorage）
-   */
-  export function setToken(token, remember = false) {
-    if (remember) {
-      localStorage.setItem('jwtToken', token)
-      sessionStorage.removeItem('jwtToken') // 清除可能存在的临时存储
-    } else {
-      sessionStorage.setItem('jwtToken', token)
-      localStorage.removeItem('jwtToken') // 清除可能存在的持久化存储
-    }
-  }
+  // 优先从sessionStorage获取，再从localStorage获取
+  return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
+}
+
+/**
+ * 移除token
+ */
+export function removeToken() {
+  localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+}
+
+/**
+ * 检查是否已登录
+ * @returns {boolean}
+ */
+export function isLoggedIn() {
+  return !!getToken();
+}
