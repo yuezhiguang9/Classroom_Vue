@@ -11,11 +11,8 @@
           <div class="header-right hidden-md">
             <div class="user-menu">
               <div class="user-info">
-                <span class="username">{{ userInfo.name || '李老师' }}</span>
-                <img class="avatar" :src="userAvatar" alt="用户头像">
-              </div>
-              <div class="dropdown-menu">
-                <a href="#" class="dropdown-item" @click.prevent="handleLogout">退出登录</a>
+                <span class="username">{{ userName || '教秘用户' }}</span>
+                <a href="#" class="dropdown-item logout-btn" @click.prevent="handleLogout">退出登录</a>
               </div>
             </div>
           </div>
@@ -36,21 +33,18 @@
           <router-link 
             to="/sec/listLogs" 
             class="sidebar-item" 
-            :class="{ active: $route.path === '/sec/listLogs' }"
+            :class="{ active: route.path === '/sec/listLogs' }"
           >
-            <i class="fa fa-clipboard-check mr-3 text-base"></i>
             <span>审核教室申请</span>
           </router-link>
         
           <router-link 
-          to="/sec/classroomUsage" 
-          class="sidebar-item" 
-          :class="{ active: $route.path === '/sec/classroomUsage' }"
-          @click.prevent="handleClassroomUsageClick" 
-        >    
-          <i class="fa fa-bar-chart mr-3 text-base"></i>
-          <span>教室使用率统计</span>
-        </router-link>
+            to="/sec/classroomUsage" 
+            class="sidebar-item classroom-usage-item" 
+            :class="{ active: route.path === '/sec/classroomUsage' }"
+          >   
+            <span>教室使用率统计</span>
+          </router-link>
         </nav>
       </aside>
 
@@ -58,136 +52,181 @@
       <main class="main-content" :class="{ 'sidebar-collapsed': !sidebarOpen }">
         <div class="content-wrapper">
           <div class="page-header">
-            <h1 class="page-title">教秘审核工作台</h1>
+            <h1 class="page-title">审核教室申请</h1>
+            <p class="page-description">处理本学院的教室预约申请审核</p>
           </div>
           
           <!-- 统计卡片 -->
           <div class="stats-grid">
-            <!-- 今日待审核卡片 -->
             <div class="stat-card animate-fade-in">
               <div class="stat-content">
                 <div>
                   <p class="stat-label">今日待审核</p>
-                  <h3 class="stat-value">{{ todayPending }}</h3>
+                  <h3 class="stat-value">{{ todayPending || '0' }}</h3>
                   
-                  <p class="stat-trend" :class="{ 'text-success': pendingTrend > 0, 'text-danger': pendingTrend < 0 }">
-                    <i class="fa" :class="pendingTrend > 0 ? 'fa-arrow-up' : pendingTrend < 0 ? 'fa-arrow-down' : 'fa-minus'"></i>
-                    {{ formatTrendText(pendingTrend, '昨日') }}
+                  <p class="stat-trend">
+                      <i class="fa" :class="[
+                        todayPendingTrendIcon,
+                        {
+                          'text-danger': todayPendingChange.value > 0,
+                          'text-success': todayPendingChange.value < 0,
+                          'text-gray-500': todayPendingChange.value === 0
+                        }
+                      ]"></i>
+                    {{ todayPendingTrendText || '无数据' }}
                   </p>
+                </div>
+                <div class="stat-icon bg-yellow-50">
+                  <i class="fa fa-clock-o text-yellow-500 text-base"></i>
                 </div>
               </div>
             </div>
             
-            <!-- 本周通过卡片 -->
             <div class="stat-card animate-fade-in" style="animation-delay: 0.2s">
               <div class="stat-content">
                 <div>
                   <p class="stat-label">本周通过</p>
-                  <h3 class="stat-value">{{ weekApproved }}</h3>
+                  <h3 class="stat-value">{{ weekApproved || '0' }}</h3>
                   
-                  <p class="stat-trend" :class="{ 'text-success': approvedTrend > 0, 'text-danger': approvedTrend < 0 }">
-                    <i class="fa" :class="approvedTrend > 0 ? 'fa-arrow-up' : approvedTrend < 0 ? 'fa-arrow-down' : 'fa-minus'"></i>
-                    {{ formatTrendText(approvedTrend, '上周') }}
+                  <p class="stat-trend">
+                    <i class="fa" :class="[
+                      weekApprovedTrendIcon,
+                      {
+                        'text-success': weekApprovedChange.value > 0,
+                        'text-danger': weekApprovedChange.value < 0,
+                        'text-gray-500': weekApprovedChange.value === 0
+                      }
+                    ]"></i>
+                    {{ weekApprovedTrendText || '无数据' }}
                   </p>
                 </div>
                 <div class="stat-icon bg-green-50">
-                  <i class="fa fa-check-circle text-success text-base"></i>
+                  <i class="fa fa-check-circle-o text-green-500 text-base"></i>
                 </div>
               </div>
             </div>
             
-            <!-- 本周驳回卡片 -->
             <div class="stat-card animate-fade-in" style="animation-delay: 0.3s">
               <div class="stat-content">
                 <div>
                   <p class="stat-label">本周驳回</p>
-                  <h3 class="stat-value">{{ weekRejected }}</h3>
+                  <h3 class="stat-value">{{ weekRejected || '0' }}</h3>
                   
-                  <p class="stat-trend" :class="{ 'text-success': rejectedTrend > 0, 'text-danger': rejectedTrend < 0 }">
-                    <i class="fa" :class="rejectedTrend > 0 ? 'fa-arrow-up' : rejectedTrend < 0 ? 'fa-arrow-down' : 'fa-minus'"></i>
-                    {{ formatTrendText(rejectedTrend, '上周') }}
+                  <p class="stat-trend">
+                    <i class="fa" :class="[
+                        weekRejectedTrendIcon,
+                        {
+                          'text-danger': weekRejectedChange.value > 0,
+                          'text-success': weekRejectedChange.value < 0,
+                          'text-gray-500': weekRejectedChange.value === 0
+                        }
+                      ]"></i>
+                    {{ weekRejectedTrendText || '无数据' }}
                   </p>
                 </div>
                 <div class="stat-icon bg-red-50">
-                  <i class="fa fa-times-circle text-danger text-base"></i>
+                  <i class="fa fa-times-circle-o text-red-500 text-base"></i>
                 </div>
               </div>
             </div>
           </div>
           
-          <!-- 筛选和批量操作 -->
+          <!-- 筛选区域 -->
           <div class="card filter-card animate-fade-in" style="animation-delay: 0.4s">
             <div class="filter-header">
-              <h2 class="filter-title">申请列表</h2>
+              <h2 class="filter-title">筛选条件</h2>
             </div>
             
             <div class="filter-content">
-              <div class="filter-form-row-1">
-                <div class="form-group">
-                  <label class="form-label">申请人</label>
-                  <input 
-                    type="text" 
-                    v-model="filter.user_name"
-                    class="form-input"
-                    placeholder="输入申请人姓名"
-                    @input="handleFilterChange"
-                  >
+              <div class="filter-form">
+                <div class="filter-row">
+                  <div class="form-group">
+                    <label class="form-label">申请状态</label>
+                    <select 
+                      class="form-select" 
+                      v-model="filter.apply_status" 
+                      @change="fetchLogs"
+                    >
+                      <option value="">全部状态</option>
+                      <option value="待审核">待审核</option>
+                      <option value="已通过">已通过</option>
+                      <option value="已驳回">已驳回</option>
+                    </select>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label class="form-label">楼栋</label>
+                    <select 
+                      class="form-select" 
+                      v-model="filter.building_id" 
+                      @change="fetchLogs"
+                    >
+                      <option value="">全部楼栋</option>
+                      <option 
+                        v-for="building in buildings" 
+                        :value="building.id" 
+                        :key="building.id"
+                      >
+                        {{ building.name }}
+                      </option>
+                    </select>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label class="form-label">申请人</label>
+                    <input 
+                      type="text" 
+                      class="form-input" 
+                      v-model="filter.user_name" 
+                      placeholder="输入申请人姓名"
+                      @input="handleSearchInput"
+                    >
+                  </div>
                 </div>
                 
-                <div class="form-group">
-                  <label class="form-label">按楼栋筛选</label>
-                  <select 
-                    v-model="filter.building_id" 
-                    class="form-select"
-                    @change="handleFilterChange"
-                  >
-                    <option value="">全部楼栋</option>
-                    <option v-for="building in buildings" :value="building.id" :key="building.id">
-                      {{ building.name }}
-                    </option>
-                  </select>
-                </div>
-                
-                <div class="form-group">
-                  <label class="form-label">审核状态</label>
-                  <select 
-                    v-model="filter.apply_status" 
-                    class="form-select"
-                    @change="handleFilterChange"
-                  >
-                    <option value="">全部状态</option>
-                    <option value="待审核">待审核</option>
-                    <option value="已通过">已通过</option>
-                    <option value="已驳回">已驳回</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div class="filter-form-row-2">
-                <div class="form-group">
-                  <label class="form-label">开始日期</label>
-                  <input 
-                    type="date" 
-                    v-model="filter.date_start"
-                    class="form-input"
-                    @change="handleFilterChange"
-                  >
-                </div>
-                
-                <div class="form-group">
-                  <label class="form-label">结束日期</label>
-                  <input 
-                    type="date" 
-                    v-model="filter.date_end"
-                    class="form-input"
-                    @change="handleFilterChange"
-                  >
+                <div class="filter-row">
+                  <div class="form-group">
+                    <label class="form-label">开始日期</label>
+                    <input 
+                      type="date" 
+                      class="form-input" 
+                      v-model="filter.date_start"
+                      @change="fetchLogs"
+                    >
+                  </div>
+                  
+                  <div class="form-group">
+                    <label class="form-label">结束日期</label>
+                    <input 
+                      type="date" 
+                      class="form-input" 
+                      v-model="filter.date_end"
+                      @change="fetchLogs"
+                    >
+                  </div>
+                  
+                  <div class="form-group form-actions">
+                    <button 
+                      type="button" 
+                      class="btn reset-btn" 
+                      @click="resetFilter"
+                    >
+                      重置
+                    </button>
+                    <button 
+                      type="button" 
+                      class="btn search-btn" 
+                      @click="fetchLogs"
+                    >
+                      查询
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           
-          <!-- 数据表格 -->
+          <!-- 申请列表表格 -->
           <div class="card table-card animate-fade-in" style="animation-delay: 0.5s">
             <div class="table-wrapper">
               <table class="data-table">
@@ -195,98 +234,108 @@
                   <tr>
                     <th>申请人</th>
                     <th>联系电话</th>
-                    <th>申请时间</th>
-                    <th>申请教室</th>
+                    <th>预约时间</th>
+                    <th>教室</th>
                     <th>使用时间</th>
-                    <th>申请用途</th>
-                    <th>使用人数</th>
-                    <th>审核状态</th>
+                    <th>用途</th>
+                    <th>人数</th>
+                    <th>状态</th>
                     <th>操作</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="application in filteredApplications" :key="application.book_time + application.user_name" class="table-row">
-                    <td>
-                      <div class="user-info">
-                        <img class="avatar" :src="`https://picsum.photos/200/200?random=${application.book_time}`" alt="申请人头像">
-                        <div class="user-details">
-                          <div class="username">{{ application.user_name }}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>{{ application.phone }}</td>
-                    <td>
-                      <div class="time-info">
-                        <div class="date">{{ formatDate(application.book_time) }}</div>
-                        <div class="time">{{ formatTime(application.book_time) }}</div>
-                      </div>
-                    </td>
-                    <td>{{ application.building_name }}-{{ application.room_num }}</td>
-                    <td>
-                      <div class="time-info">
-                        <div class="date">{{ application.date }}</div>
-                        <div class="time">第{{ application.week }}周 {{ application.day_of_week }} {{ application.period }}</div>
-                      </div>
-                    </td>
-                    <td>{{ application.purpose }}</td>
-                    <td>{{ application.person_count }}人</td>
+                  <tr v-if="loading">
+                    <td colspan="9" class="text-center py-4">加载中...</td>
+                  </tr>
+                  <tr v-for="(item, index) in logsData" :key="index" v-else-if="item">
+                    <td>{{ item.user_name }}</td>
+                    <td>{{ item.phone }}</td>
+                    <td>{{ item.book_time }}</td>
+                    <td>{{ item.classroom }}</td>
+                    <td>{{ item.use_time }}</td>
+                    <td>{{ item.purpose }}</td>
+                    <td>{{ item.person_count }}</td>
                     <td>
                       <span class="status-tag" :class="{
-                        'status-pending': application.apply_status === '待审核',
-                        'status-approved': application.apply_status === '已通过',
-                        'status-rejected': application.apply_status === '已驳回'
+                        'pending': item.apply_status === '待审核',
+                        'approved': item.apply_status === '已通过',
+                        'rejected': item.apply_status === '已驳回'
                       }">
-                        {{ application.apply_status }}
+                        {{ item.apply_status }}
                       </span>
                     </td>
                     <td>
                       <button 
-                        class="btn btn-primary btn-sm" 
-                        @click="openViewModal(application)"
+                        class="btn view-btn" 
+                        @click="viewDetails(item.apply_id)"
                       >
                         查看详情
                       </button>
+                      <button 
+                        class="btn approve-btn" 
+                        @click="handleApprove(item.apply_id)"
+                        v-if="item.apply_status === '待审核'"
+                      >
+                        通过
+                      </button>
+                      <button 
+                        class="btn reject-btn" 
+                        @click="handleReject(item.apply_id)"
+                        v-if="item.apply_status === '待审核'"
+                      >
+                        驳回
+                      </button>
                     </td>
                   </tr>
-                  <tr v-if="filteredApplications.length === 0">
-                    <td colspan="9" class="text-center">暂无数据</td>
+                  <tr v-if="!loading && logsData.length === 0">
+                    <td colspan="9" class="text-center py-4">暂无数据</td>
                   </tr>
                 </tbody>
               </table>
             </div>
             
             <!-- 分页 -->
-            <div class="pagination-container">
-              <div class="pagination">
+            <div class="pagination" v-if="!loading && pagination.total > 0">
+              <button 
+                class="pagination-btn" 
+                :disabled="pagination.page === 1" 
+                @click="changePage(pagination.page - 1)"
+              >
+                <i class="fa fa-chevron-left"></i>
+              </button>
+              
+              <!-- 动态生成页码按钮 -->
+              <template v-for="pageNum in visiblePages" :key="pageNum">
                 <button 
                   class="pagination-btn" 
-                  @click="changePage(page - 1)" 
-                  :disabled="page === 1"
+                  :class="{ 'active': pagination.page === pageNum }" 
+                  @click="changePage(pageNum)"
                 >
-                  上一页
+                  {{ pageNum }}
                 </button>
-                
-                <button 
-                  v-for="p in visiblePages" 
-                  :key="p" 
-                  class="pagination-btn" 
-                  :class="{ active: p === page }"
-                  @click="changePage(p)"
-                >
-                  {{ p }}
-                </button>
-                
-                <button 
-                  class="pagination-btn" 
-                  @click="changePage(page + 1)" 
-                  :disabled="page === totalPages"
-                >
-                  下一页
-                </button>
-              </div>
+              </template>
+              
+              <button 
+                class="pagination-btn" 
+                :disabled="pagination.page === Math.ceil(pagination.total / pagination.size)" 
+                @click="changePage(pagination.page + 1)"
+              >
+                <i class="fa fa-chevron-right"></i>
+              </button>
               
               <div class="pagination-info">
-                <p>显示第 {{ Math.min((page - 1) * pageSize + 1, total) }}-{{ Math.min(page * pageSize, total) }} 条，共 {{ total }} 条</p>
+                共 {{ pagination.total }} 条，
+                每页 
+                <select 
+                  class="page-size-select" 
+                  v-model="pagination.size" 
+                  @change="changePageSize"
+                >
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                </select>
+                条
               </div>
             </div>
           </div>
@@ -294,264 +343,358 @@
       </main>
     </div>
     
-    <!-- 查看详情模态框 -->
-    <div class="modal-backdrop" v-if="viewModalOpen">
+    <!-- 详情弹窗 -->
+    <div class="modal-backdrop" v-if="showDetails">
       <div class="modal">
         <div class="modal-header">
-          <h3 class="modal-title">申请详情</h3>
-          <button class="close-btn" @click="closeViewModal">
-            <i class="fa fa-times"></i>
-          </button>
+          <h3 class="modal-title">预约详情</h3>
+          <button class="modal-close" @click="closeDetails">×</button>
         </div>
-        
-        <div class="modal-body" v-if="currentApplication">
+        <div class="modal-body">
           <div class="detail-item">
-            <p class="detail-label">申请人</p>
-            <p class="detail-value">{{ currentApplication.user_name }}</p>
+            <span class="detail-label">申请人：</span>
+            <span class="detail-value">{{ currentDetail.user_name || '-' }}</span>
           </div>
-          
           <div class="detail-item">
-            <p class="detail-label">联系电话</p>
-            <p class="detail-value">{{ currentApplication.phone }}</p>
+            <span class="detail-label">联系电话：</span>
+            <span class="detail-value">{{ currentDetail.phone || '-' }}</span>
           </div>
-          
           <div class="detail-item">
-            <p class="detail-label">申请时间</p>
-            <p class="detail-value">{{ formatDateTime(currentApplication.book_time) }}</p>
+            <span class="detail-label">预约时间：</span>
+            <span class="detail-value">{{ currentDetail.book_time || '-' }}</span>
           </div>
-          
           <div class="detail-item">
-            <p class="detail-label">申请教室</p>
-            <p class="detail-value">{{ currentApplication.building_name }}-{{ currentApplication.room_num }}</p>
+            <span class="detail-label">教室：</span>
+            <span class="detail-value">{{ currentDetail.classroom || '-' }}</span>
           </div>
-          
           <div class="detail-item">
-            <p class="detail-label">使用时间</p>
-            <p class="detail-value">
-              {{ currentApplication.date }} 第{{ currentApplication.week }}周 {{ currentApplication.day_of_week }} {{ currentApplication.period }}
-            </p>
+            <span class="detail-label">使用时间：</span>
+            <span class="detail-value">{{ currentDetail.use_time || '-' }}</span>
           </div>
-          
           <div class="detail-item">
-            <p class="detail-label">使用人数</p>
-            <p class="detail-value">{{ currentApplication.person_count }}人</p>
+            <span class="detail-label">用途：</span>
+            <span class="detail-value">{{ currentDetail.purpose || '-' }}</span>
           </div>
-          
           <div class="detail-item">
-            <p class="detail-label">申请用途</p>
-            <p class="detail-value">{{ currentApplication.purpose }}</p>
+            <span class="detail-label">人数：</span>
+            <span class="detail-value">{{ currentDetail.person_count || '-' }}</span>
           </div>
-          
-          <div class="detail-item" v-if="currentApplication.reject_reason">
-            <p class="detail-label">驳回原因</p>
-            <p class="detail-value">{{ currentApplication.reject_reason }}</p>
+          <div class="detail-item" v-if="currentDetail.apply_status === '已通过'">
+            <span class="detail-label">审核时间：</span>
+            <span class="detail-value">{{ currentDetail.approve_time || '-' }}</span>
           </div>
-
-          <!-- 驳回原因输入框（仅待审核状态显示） -->
-          <div class="detail-item" v-if="currentApplication.apply_status === '待审核'">
-            <p class="detail-label">驳回原因（如适用）</p>
-            <textarea 
-              v-model="rejectReason" 
-              class="form-input" 
-              rows="3"
-              placeholder="请输入驳回原因"
-            ></textarea>
+          <div class="detail-item" v-if="currentDetail.apply_status === '已驳回'">
+            <span class="detail-label">驳回时间：</span>
+            <span class="detail-value">{{ currentDetail.reject_time || '-' }}</span>
+          </div>
+          <div class="detail-item" v-if="currentDetail.apply_status === '已驳回' && currentDetail.reject_reason">
+            <span class="detail-label">驳回原因：</span>
+            <span class="detail-value">{{ currentDetail.reject_reason }}</span>
           </div>
         </div>
-        
         <div class="modal-footer">
-          <button class="btn btn-default" @click="closeViewModal">关闭</button>
-          
-          <!-- 仅待审核状态显示操作按钮 -->
-          <template v-if="currentApplication?.apply_status === '待审核'">
-            <button class="btn btn-success" @click="handleApprove">通过申请</button>
-            <button class="btn btn-danger" @click="handleReject">驳回申请</button>
-          </template>
+          <button class="btn close-btn" @click="closeDetails">关闭</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 驳回原因弹窗 -->
+    <div class="modal-backdrop" v-if="showRejectReason">
+      <div class="modal reject-modal">
+        <div class="modal-header">
+          <h3 class="modal-title">驳回申请</h3>
+          <button class="modal-close" @click="cancelReject">×</button>
+        </div>
+        <div class="modal-body">
+          <textarea 
+            v-model="rejectReason" 
+            class="reason-textarea" 
+            placeholder="请输入驳回原因"
+            rows="4"
+          ></textarea>
+          <p class="textarea-hint">请说明驳回原因，以便申请人了解情况</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn cancel-btn" @click="cancelReject">取消</button>
+          <button class="btn confirm-reject-btn" @click="confirmReject">确认驳回</button>
         </div>
       </div>
     </div>
   </div>
 </template>
+
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import axios from 'axios';
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { getToken, removeToken, getUserInfo, removeUserInfo } from '../../utils/auth';
+import axios from '@/utils/axios';
 
-// 格式化日期
-const formatDate = (dateStr) => {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('zh-CN');
-};
-
-// 格式化时间
-const formatTime = (dateStr) => {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-};
-
-// 格式化日期时间
-const formatDateTime = (dateStr) => {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  }).replace(',', '');
-};
-
-// 路由与导航相关
-const router = useRouter();
+// 路由相关
 const route = useRoute();
+const router = useRouter();
 
-// 页面状态数据
+// 响应式状态
+const userName = ref('');
+const isScrolled = ref(false);
+const sidebarOpen = ref(true);
+const isMobile = ref(false);
+
+// 筛选条件
+const filter = ref({
+  apply_status: '',
+  building_id: '',
+  user_name: '',
+  date_start: '',
+  date_end: '',
+  page: 1,
+  size: 10
+});
+
+// 列表数据
 const logsData = ref([]);
-const total = ref(0); // 总记录数
 const loading = ref(false);
-const page = ref(1); // 当前页码
-const pageSize = ref(10); // 每页条数
-const isRefreshing = ref(false);
-const sidebarOpen = ref(true); // 侧边栏状态
-const isScrolled = ref(false); // 头部滚动状态
-const userInfo = ref(getUserInfo() || {}); // 用户信息
-const userAvatar = ref('https://picsum.photos/200/200?random=1'); // 默认头像
-
-// 统计数据
 const todayPending = ref(0);
 const weekApproved = ref(0);
 const weekRejected = ref(0);
-const pendingTrend = ref(0);
-const approvedTrend = ref(0);
-const rejectedTrend = ref(0);
 
-// 筛选条件
-const filter = reactive({
-  user_name: '',
-  building_id: '',
-  apply_status: '',
-  date_start: '',
-  date_end: ''
+// 统计趋势数据
+const todayPendingChange = ref(0); // 今日待审核与昨日变化
+const weekApprovedChange = ref(0); // 本周通过与上周变化
+const weekRejectedChange = ref(0); // 本周驳回与上周变化
+
+// 趋势显示计算属性
+const todayPendingTrendIcon = computed(() => {
+  if (todayPendingChange.value > 0) return 'fa-arrow-up';
+  if (todayPendingChange.value < 0) return 'fa-arrow-down';
+  return 'fa-minus';
 });
 
-// 模态框相关
-const viewModalOpen = ref(false);
-const currentApplication = ref(null);
+const todayPendingTrendText = computed(() => {
+  const absValue = Math.abs(todayPendingChange.value);
+  if (todayPendingChange.value > 0) return `较昨日上升 ${absValue} 单`;
+  if (todayPendingChange.value < 0) return `较昨日下降 ${absValue} 单`;
+  return '与昨日持平';
+});
+
+const weekApprovedTrendIcon = computed(() => {
+  if (weekApprovedChange.value > 0) return 'fa-arrow-up';
+  if (weekApprovedChange.value < 0) return 'fa-arrow-down';
+  return 'fa-minus';
+});
+
+const weekApprovedTrendText = computed(() => {
+  const absValue = Math.abs(weekApprovedChange.value);
+  if (weekApprovedChange.value > 0) return `较上周上升 ${absValue} 单`;
+  if (weekApprovedChange.value < 0) return `较上周下降 ${absValue} 单`;
+  return '与上周持平';
+});
+
+const weekRejectedTrendIcon = computed(() => {
+  if (weekRejectedChange.value > 0) return 'fa-arrow-up';
+  if (weekRejectedChange.value < 0) return 'fa-arrow-down';
+  return 'fa-minus';
+});
+
+const weekRejectedTrendText = computed(() => {
+  const absValue = Math.abs(weekRejectedChange.value);
+  if (weekRejectedChange.value > 0) return `较上周上升 ${absValue} 单`;
+  if (weekRejectedChange.value < 0) return `较上周下降 ${absValue} 单`;
+  return '与上周持平';
+});
+
+// 分页数据
+const pagination = ref({
+  page: 1,
+  size: 10,
+  total: 0
+});
+
+// 楼栋数据
+const buildings = ref([]);
+
+// 详情弹窗
+const showDetails = ref(false);
+const currentDetail = ref({});
+
+// 驳回相关
+const showRejectReason = ref(false);
 const rejectReason = ref('');
+const currentApplyId = ref('');
 
-// 教室与楼栋数据
-const buildings = ref([]); // 楼栋列表（从教室数据中提取）
-const classrooms = ref([]); // 教室列表
+// 搜索防抖计时器
+const searchTimer = ref(null);
 
-// 计算过滤后的申请列表（分页处理）
-const filteredApplications = computed(() => {
-  // 先过滤
-  let filtered = logsData.value.filter(item => {
-    if (filter.user_name && !item.user_name.includes(filter.user_name)) return false;
-    if (filter.building_id && item.building_id !== filter.building_id) return false;
-    if (filter.apply_status && item.apply_status !== filter.apply_status) return false;
-    if (filter.date_start && new Date(item.date) < new Date(filter.date_start)) return false;
-    if (filter.date_end && new Date(item.date) > new Date(filter.date_end)) return false;
-    return true;
-  });
-  
-  // 再分页
-  const startIndex = (page.value - 1) * pageSize.value;
-  return filtered.slice(startIndex, startIndex + pageSize.value);
-});
-
-// 计算总页数
-const totalPages = computed(() => {
-  return Math.ceil(total.value / pageSize.value) || 1;
-});
-
-// 计算可见页码
-const visiblePages = computed(() => {
-  const pages = [];
-  const maxShow = 5; // 最多显示5个页码
-  let start = Math.max(1, page.value - Math.floor(maxShow / 2));
-  let end = start + maxShow - 1;
-  
-  if (end > totalPages.value) {
-    end = totalPages.value;
-    start = Math.max(1, end - maxShow + 1);
+// 处理搜索输入防抖
+const handleSearchInput = () => {
+  if (searchTimer.value) {
+    clearTimeout(searchTimer.value);
   }
-  
-  for (let i = start; i <= end; i++) {
-    pages.push(i);
-  }
-  return pages;
-});
-
-// 初始化页面
-onMounted(async () => {
-  // 监听滚动事件（控制头部样式）
-  window.addEventListener('scroll', handleScroll);
-  
-  // 验证登录状态
-  const token = getToken();
-  if (!token) {
-    ElMessage.error('您尚未登录，请先登录');
-    router.push('/auth/login');
-    return;
-  }
-
-  // 验证用户身份
-  const info = getUserInfo();
-  if (!info || info.identity !== 'teach_sec') {
-    ElMessage.error('您没有访问该页面的权限');
-    removeToken();
-    removeUserInfo();
-    router.push('/auth/login');
-    return;
-  }
-  userInfo.value = info;
-
-  // 加载数据
-  await Promise.all([
-    loadClassrooms(),
-    fetchLogs()
-  ]);
-  
-  // 计算统计数据
-  calculateStats();
-  
-  // 设置自动刷新定时器
-  window.logsTimer = setInterval(async () => {
-    if (!isRefreshing.value) {
-      await fetchLogs();
-      calculateStats();
-    }
-  }, 30000); // 每30秒刷新一次
-});
-
-// 页面卸载前清理
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', handleScroll);
-  if (window.logsTimer) {
-    clearInterval(window.logsTimer);
-    window.logsTimer = null;
-  }
-});
-
-// 监听路由变化
-watch(
-  () => route.query,
-  () => {
-    page.value = 1;
+  searchTimer.value = setTimeout(() => {
+    filter.value.page = 1; // 重置到第一页
     fetchLogs();
-  }
-);
+  }, 500);
+};
 
-// 处理滚动事件
-const handleScroll = () => {
-  isScrolled.value = window.scrollY > 10;
+// 获取楼栋数据
+const fetchBuildings = async () => {
+  try {
+    const response = await axios.get('/buildings');
+    if (response.data && response.data.data) {
+      buildings.value = response.data.data;
+    }
+  } catch (error) {
+    console.error('获取楼栋数据失败:', error);
+    ElMessage.error('获取楼栋信息失败');
+  }
+};
+
+// 获取日志列表数据
+const fetchLogs = async () => {
+  loading.value = true;
+  try {
+    // 构建请求参数
+    const params = {
+      ...filter.value,
+      page: filter.value.page,
+      size: filter.value.size
+    };
+    
+    const response = await axios.get('/sec/listLogs', { params });
+    
+    if (response.data && response.data.data) {
+      const data = response.data.data;
+      logsData.value = data.list || [];
+      pagination.value.total = data.total || 0;
+      pagination.value.page = data.page || 1;
+      pagination.value.size = data.size || 10;
+      
+      // 更新统计数据
+      todayPending.value = data.today_pending || 0;
+      weekApproved.value = data.week_approved || 0;
+      weekRejected.value = data.week_rejected || 0;
+      
+      // 更新趋势数据
+      todayPendingChange.value = data.today_pending_change || 0;
+      weekApprovedChange.value = data.week_approved_change || 0;
+      weekRejectedChange.value = data.week_rejected_change || 0;
+    }
+  } catch (error) {
+    console.error('获取审核列表失败:', error);
+    ElMessage.error('获取数据失败，请重试');
+    logsData.value = [];
+    pagination.value.total = 0;
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 查看详情
+const viewDetails = async (applyId) => {
+  try {
+    const response = await axios.get('/sec/viewLogs', {
+      params: { apply_id: applyId }
+    });
+    if (response.data && response.data.data) {
+      currentDetail.value = response.data.data;
+      showDetails.value = true;
+    } else {
+      ElMessage.error('获取详情失败');
+    }
+  } catch (error) {
+    console.error('获取详情失败:', error);
+    ElMessage.error('获取详情失败，请重试');
+  }
+};
+
+// 关闭详情
+const closeDetails = () => {
+  showDetails.value = false;
+  currentDetail.value = {};
+};
+
+// 处理通过
+const handleApprove = async (applyId) => {
+  ElMessageBox.confirm('确定要通过该申请吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'info'
+  }).then(async () => {
+    try {
+      await axios.post('/sec/approve', { apply_id: applyId });
+      ElMessage.success('操作成功');
+      fetchLogs(); // 刷新列表
+    } catch (error) {
+      console.error('审核通过失败:', error);
+      ElMessage.error('操作失败，请重试');
+    }
+  }).catch(() => {
+    // 取消操作
+  });
+};
+
+// 处理驳回
+const handleReject = (applyId) => {
+  currentApplyId.value = applyId;
+  rejectReason.value = '';
+  showRejectReason.value = true;
+};
+
+// 取消驳回
+const cancelReject = () => {
+  showRejectReason.value = false;
+  currentApplyId.value = '';
+  rejectReason.value = '';
+};
+
+// 确认驳回
+const confirmReject = async () => {
+  if (!rejectReason.value.trim()) {
+    ElMessage.warning('请输入驳回原因');
+    return;
+  }
+  
+  try {
+    await axios.post('/sec/reject', {
+      apply_id: currentApplyId.value,
+      reject_reason: rejectReason.value.trim()
+    });
+    ElMessage.success('驳回成功');
+    showRejectReason.value = false;
+    currentApplyId.value = '';
+    rejectReason.value = '';
+    fetchLogs(); // 刷新列表
+  } catch (error) {
+    console.error('驳回失败:', error);
+    ElMessage.error('操作失败，请重试');
+  }
+};
+
+// 重置筛选条件
+const resetFilter = () => {
+  filter.value = {
+    apply_status: '',
+    building_id: '',
+    user_name: '',
+    date_start: '',
+    date_end: '',
+    page: 1,
+    size: 10
+  };
+  fetchLogs();
+};
+
+// 改变页码
+const changePage = (pageNum) => {
+  if (pageNum === '...') return; // 跳过省略号
+  filter.value.page = pageNum;
+  fetchLogs();
+};
+
+// 改变每页条数
+const changePageSize = () => {
+  filter.value.size = pagination.value.size;
+  filter.value.page = 1; // 重置到第一页
+  fetchLogs();
 };
 
 // 切换侧边栏
@@ -559,245 +702,23 @@ const toggleSidebar = () => {
   sidebarOpen.value = !sidebarOpen.value;
 };
 
-// 处理切换到教室使用率统计页面
-const handleClassroomUsageClick = () => {
-  // 导航完成后刷新页面
-  router.push('/sec/classroomUsage').then(() => {
-    window.location.reload();
-  });
-};
-
-// 加载教室列表（提取楼栋信息）
-const loadClassrooms = async () => {
-  try {
-    // 假设正确的教室列表接口地址
-    const response = await axios.get('/classroom/listAll');
-    if (response.data?.code === 200 && Array.isArray(response.data.data)) {
-      classrooms.value = response.data.data;
-      // 提取唯一楼栋
-      const buildingSet = new Set();
-      response.data.data.forEach(room => {
-        if (!buildingSet.has(room.building_id)) {
-          buildingSet.add(room.building_id);
-          buildings.value.push({
-            id: room.building_id,
-            name: room.building_name
-          });
-        }
-      });
-    } else {
-      ElMessage.warning('获取教室列表失败');
-    }
-  } catch (error) {
-    console.error('加载教室列表错误:', error);
-    ElMessage.error('加载教室列表时发生错误');
-  }
-};
-
-// 获取申请日志数据
-const fetchLogs = async () => {
-  loading.value = true;
-  isRefreshing.value = true;
-  try {
-    // 确保参数格式正确，只传递有值的参数
-    const params = {
-      page: page.value,
-      size: pageSize.value,
-      ...(filter.user_name && { user_name: filter.user_name }),
-      ...(filter.building_id && { building_id: filter.building_id }),
-      ...(filter.apply_status && { apply_status: filter.apply_status }),
-      ...(filter.date_start && { date_start: filter.date_start }),
-      ...(filter.date_end && { date_end: filter.date_end })
-    };
-
-    const response = await axios.get('/sec/listLogs', { params });
-    
-    if (response.data?.code === 200) {
-      logsData.value = response.data.data?.records || [];
-      total.value = response.data.data?.total || 0;
-    } else {
-      ElMessage.warning(response.data?.msg || '获取申请数据失败');
-      logsData.value = [];
-      total.value = 0;
-    }
-  } catch (error) {
-    console.error('获取申请数据错误:', error);
-    ElMessage.error('获取申请数据时发生错误');
-  } finally {
-    loading.value = false;
-    isRefreshing.value = false;
-  }
-};
-
-// 获取申请详情（根据接口文档补充）
-const fetchApplicationDetail = async (applyId) => {
-  try {
-    const response = await axios.get('/sec/viewLogs', {
-      params: { apply_id: applyId }
-    });
-    
-    if (response.data?.code === 200) {
-      return response.data.data;
-    } else {
-      ElMessage.warning(response.data?.msg || '获取申请详情失败');
-      return null;
-    }
-  } catch (error) {
-    console.error('获取申请详情错误:', error);
-    ElMessage.error('获取申请详情时发生错误');
-    return null;
-  }
-};
-
-// 计算统计数据
-const calculateStats = () => {
-  const today = new Date().toISOString().split('T')[0];
-  const weekStart = new Date();
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // 本周一
-  const lastWeekStart = new Date(weekStart);
-  lastWeekStart.setDate(lastWeekStart.getDate() - 7); // 上周一
-  const lastWeekEnd = new Date(lastWeekStart);
-  lastWeekEnd.setDate(lastWeekEnd.getDate() + 6); // 上周日
-
-  // 今日待审核
-  todayPending.value = logsData.value.filter(item => 
-    formatDate(item.book_time) === today && item.apply_status === '待审核'
-  ).length;
-
-  // 本周通过/驳回
-  weekApproved.value = logsData.value.filter(item => {
-    const itemDate = new Date(item.book_time);
-    return itemDate >= weekStart && item.apply_status === '已通过';
-  }).length;
-  
-  weekRejected.value = logsData.value.filter(item => {
-    const itemDate = new Date(item.book_time);
-    return itemDate >= weekStart && item.apply_status === '已驳回';
-  }).length;
-
-  // 环比上周（趋势计算）
-  const lastWeekApproved = logsData.value.filter(item => {
-    const itemDate = new Date(item.book_time);
-    return itemDate >= lastWeekStart && itemDate <= lastWeekEnd && item.apply_status === '已通过';
-  }).length;
-  
-  const lastWeekRejected = logsData.value.filter(item => {
-    const itemDate = new Date(item.book_time);
-    return itemDate >= lastWeekStart && itemDate <= lastWeekEnd && item.apply_status === '已驳回';
-  }).length;
-
-  approvedTrend.value = weekApproved.value - lastWeekApproved;
-  rejectedTrend.value = weekRejected.value - lastWeekRejected;
-  pendingTrend.value = 0; // 简化处理：实际应对比昨日待审核数
-};
-
-// 格式化趋势文本
-const formatTrendText = (trend, compared) => {
-  if (trend === 0) return `与${compared}持平`;
-  return `${trend > 0 ? '增加' : '减少'} ${Math.abs(trend)} 条`;
-};
-
-// 筛选条件变化
-const handleFilterChange = () => {
-  page.value = 1; // 重置到第一页
-  fetchLogs();
-};
-
-// 分页切换
-const changePage = (newPage) => {
-  if (newPage < 1 || newPage > totalPages.value) return;
-  page.value = newPage;
-  fetchLogs();
-  window.scrollTo(0, 0);
-};
-
-// 打开详情模态框
-const openViewModal = async (application) => {
-  // 调用详情接口获取完整信息
-  const detailData = await fetchApplicationDetail(application.apply_id);
-  currentApplication.value = detailData || { ...application };
-  rejectReason.value = ''; // 重置驳回原因
-  viewModalOpen.value = true;
-};
-
-// 关闭详情模态框
-const closeViewModal = () => {
-  viewModalOpen.value = false;
-  currentApplication.value = null;
-  rejectReason.value = '';
-};
-
-// 审核通过
-const handleApprove = async () => {
-  if (!currentApplication.value) return;
-  
-  try {
-    const response = await axios.post('/sec/updateStatus', {
-      apply_id: currentApplication.value.apply_id,
-      apply_status: '已通过'
-    });
-    
-    if (response.data?.code === 200) {
-      ElMessage.success('审核通过成功');
-      closeViewModal();
-      fetchLogs();
-      calculateStats();
-    } else {
-      ElMessage.error(response.data?.msg || '审核通过失败');
-    }
-  } catch (error) {
-    console.error('审核通过错误:', error);
-    ElMessage.error('审核操作失败');
-  }
-};
-
-// 审核驳回
-const handleReject = async () => {
-  if (!currentApplication.value) return;
-  if (!rejectReason.value.trim()) {
-    ElMessage.warning('请输入驳回原因');
-    return;
-  }
-  
-  try {
-    const response = await axios.post('/sec/updateStatus', {
-      apply_id: currentApplication.value.apply_id,
-      apply_status: '已驳回',
-      reject_reason: rejectReason.value
-    });
-    
-    if (response.data?.code === 200) {
-      ElMessage.success('驳回成功');
-      closeViewModal();
-      fetchLogs();
-      calculateStats();
-    } else {
-      ElMessage.error(response.data?.msg || '驳回失败');
-    }
-  } catch (error) {
-    console.error('驳回错误:', error);
-    ElMessage.error('驳回操作失败');
-  }
-};
-
 // 退出登录
-const handleLogout = async () => {
+const handleLogout = () => {
   ElMessageBox.confirm('确定要退出登录吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
     try {
-      // 调用退出登录API
+      // 调用退出接口
       await axios.post('/auth/logout');
     } catch (error) {
-      console.error('退出登录API调用失败:', error);
+      console.error('退出登录接口调用失败:', error);
     } finally {
-      // 清除本地存储
-      removeToken();
-      removeUserInfo();
+      // 清除本地存储的用户信息
+      localStorage.removeItem('currentUser');
       // 跳转到登录页并刷新
-      router.push('/auth/login').then(() => {
+      router.push('/login').then(() => {
         window.location.reload();
       });
       ElMessage.success('退出登录成功');
@@ -807,12 +728,101 @@ const handleLogout = async () => {
     ElMessage.info('已取消退出');
   });
 };
+
+// 计算可见页码
+const visiblePages = computed(() => {
+  const totalPages = Math.ceil(pagination.value.total / pagination.value.size);
+  const currentPage = pagination.value.page;
+  const pages = [];
+
+  // 总页数小于等于5时，显示所有页码
+  if (totalPages <= 5) {
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(i);
+    }
+  } else {
+    // 当前页在前面几页时
+    if (currentPage <= 3) {
+      pages.push(1, 2, 3, 4, 5, '...', totalPages);
+    } 
+    // 当前页在后面几页时
+    else if (currentPage >= totalPages - 2) {
+      pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    } 
+    // 当前页在中间时
+    else {
+      pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+    }
+  }
+
+  return pages;
+});
+
+// 生命周期
+onMounted(() => {
+  // 获取用户信息
+  const user = localStorage.getItem('currentUser');
+  if (user) {
+    const userData = JSON.parse(user);
+    userName.value = userData.name || '教秘用户';
+  }
+  
+  // 加载数据
+  fetchBuildings().then(() => {
+    fetchLogs();
+  });
+  
+  // 监听滚动事件
+  const handleScroll = () => {
+    isScrolled.value = window.scrollY > 10;
+  };
+  window.addEventListener('scroll', handleScroll);
+  
+  // 监听窗口大小变化
+  const handleResize = () => {
+    isMobile.value = window.innerWidth < 768;
+    sidebarOpen.value = !isMobile.value; // 移动端默认收起侧边栏
+  };
+  window.addEventListener('resize', handleResize);
+  handleResize(); // 初始化
+});
+
+// 清理事件监听
+onUnmounted(() => {
+  window.removeEventListener('scroll', () => {
+    isScrolled.value = window.scrollY > 10;
+  });
+  window.removeEventListener('resize', () => {
+    isMobile.value = window.innerWidth < 768;
+    sidebarOpen.value = !isMobile.value;
+  });
+  
+  if (searchTimer.value) {
+    clearTimeout(searchTimer.value);
+  }
+});
+
+// 监听路由变化
+watch(route, () => {
+  // 路由变化时刷新数据
+  fetchLogs();
+});
 </script>
+
 <style scoped>
-/* 引入与ClassroomUsage.vue一致的样式变量 */
+/* 基础样式变量 */
 :root {
-  --primary: #165dff;
-  --gray-50: #f9fafb;
+  --primary: #3b82f6;
+  --success: #10b981;
+  --warning: #fbbd23;
+  --danger: #ef4444;
+  --yellow-50: #fffbeb;
+  --yellow-500: #f59e0b;
+  --green-50: #ecfdf5;
+  --green-500: #10b981;
+  --red-50: #fee2e2;
+  --red-500: #ef4444;
+  --gray-50: #f5f7fa;
   --gray-100: #f3f4f6;
   --gray-200: #e5e7eb;
   --gray-300: #d1d5db;
@@ -821,62 +831,42 @@ const handleLogout = async () => {
   --gray-600: #4b5563;
   --gray-700: #374151;
   --gray-800: #1f2937;
-  --blue-50: #eff6ff;
-  --green-50: #ecfdf5;
-  --red-50: #fee2e2;
-  --success: #10b981;
-  --danger: #ef4444;
+  --white: #ffffff;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
-/* 基础动画 */
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* 最外层容器 - 确保页面占满全屏 */
 .app-wrapper {
-  display: flex;
-  flex-direction: column;
   min-height: 100vh;
-}
-
-.app-container {
-  display: flex;
-  flex: 1;
   background-color: var(--gray-50);
 }
 
-/* 头部导航 */
+/* 顶部导航 */
 .header {
-  background-color: white;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 50;
-  width: 100%;
-  transition: all 0.3s ease;
-  height: 3rem;
+  left: 0;
+  right: 0;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  transition: background-color 0.3s ease;
 }
 
 .header-scrolled {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .container {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
 }
 
 .header-content {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   height: 3rem;
 }
 
@@ -899,49 +889,23 @@ const handleLogout = async () => {
 .user-info {
   display: flex;
   align-items: center;
-  cursor: pointer;
+  gap: 1rem;
 }
 
 .username {
-  margin-right: 0.5rem;
   font-size: 0.875rem;
   color: var(--gray-700);
 }
 
-.avatar {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background-color: white;
-  border-radius: 0.25rem;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  min-width: 10rem;
-  z-index: 100;
-  display: none;
-}
-
-.user-menu:hover .dropdown-menu {
-  display: block;
-}
-
-.dropdown-item {
-  display: block;
-  padding: 0.5rem 1rem;
-  color: var(--gray-700);
+.logout-btn {
+  color: var(--danger);
+  font-size: 0.875rem;
   text-decoration: none;
-  font-size: 0.875rem;
-  transition: background-color 0.15s ease;
+  transition: color 0.2s ease;
 }
 
-.dropdown-item:hover {
-  background-color: var(--gray-50);
+.logout-btn:hover {
+  color: #dc2626;
 }
 
 .mobile-menu-btn button {
@@ -949,6 +913,13 @@ const handleLogout = async () => {
   border: none;
   color: var(--gray-700);
   cursor: pointer;
+}
+
+/* 主体容器 */
+.app-container {
+  display: flex;
+  margin-top: 3rem;
+  min-height: calc(100vh - 3rem);
 }
 
 /* 侧边栏 */
@@ -992,6 +963,8 @@ const handleLogout = async () => {
   font-weight: 500;
 }
 
+
+
 /* 主内容区 */
 .main-content {
   margin-left: 0.5rem;
@@ -1004,22 +977,20 @@ const handleLogout = async () => {
   margin-left: 0;
 }
 
-.content-wrapper {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 1rem;
-  width: 100%;
-}
-
 .page-header {
   margin-bottom: 1.5rem;
 }
 
 .page-title {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: var(--gray-800);
-  margin: 0;
+  margin-bottom: 0.5rem;
+}
+
+.page-description {
+  color: var(--gray-600);
+  font-size: 0.875rem;
 }
 
 /* 统计卡片 */
@@ -1033,53 +1004,46 @@ const handleLogout = async () => {
 .stat-card {
   background-color: white;
   border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
   padding: 1rem;
+}
+
+.stat-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.stat-content {
-  flex: 1;
-}
-
 .stat-label {
   font-size: 0.875rem;
   color: var(--gray-500);
-  margin: 0 0 0.25rem 0;
+  margin-bottom: 0.25rem;
 }
 
 .stat-value {
-  font-size: 1.75rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: var(--gray-800);
-  margin: 0 0 0.25rem 0;
+  margin-bottom: 0.5rem;
 }
 
 .stat-trend {
   font-size: 0.75rem;
-  margin: 0;
   display: flex;
   align-items: center;
 }
 
-.stat-trend i {
-  margin-right: 0.25rem;
-  font-size: 0.875rem;
-}
-
 .stat-icon {
-  width: 3rem;
-  height: 3rem;
+  width: 3.5rem;
+  height: 3.5rem;
   border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* 卡片样式 */
-.card {
+/* 筛选区域 */
+.filter-card {
   background-color: white;
   border-radius: 0.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -1088,66 +1052,96 @@ const handleLogout = async () => {
 }
 
 .filter-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--gray-200);
 }
 
 .filter-title {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--gray-800);
   margin: 0;
 }
 
-.filter-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
 .filter-content {
-  padding: 1rem 1.25rem;
+  padding: 1.25rem;
 }
 
-.filter-form-row-1,
-.filter-form-row-2 {
+.filter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.filter-row {
   display: flex;
   gap: 1rem;
-  margin-bottom: 1rem;
   flex-wrap: wrap;
 }
 
 .form-group {
   flex: 1;
-  min-width: 200px;
-  margin: 0;
+  min-width: 150px;
+  margin-bottom: 0;
 }
 
 .form-label {
   display: block;
-  margin-bottom: 0.5rem;
   font-size: 0.875rem;
-  color: var(--gray-700);
   font-weight: 500;
+  color: var(--gray-700);
+  margin-bottom: 0.5rem;
 }
 
-.form-input,
-.form-select {
+.form-select,
+.form-input {
   width: 100%;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--gray-300);
-  border-radius: 0.25rem;
+  border-radius: 0.375rem;
   font-size: 0.875rem;
-  transition: border-color 0.2s ease;
 }
 
-.form-input:focus,
-.form-select:focus {
+.form-select:focus,
+.form-input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+/* 按钮样式 */
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border: none;
+}
+
+.reset-btn {
+  background-color: var(--gray-200);
+  color: var(--gray-700);
+}
+
+.reset-btn:hover {
+  background-color: var(--gray-300);
+}
+
+.search-btn {
+  background-color: var(--primary);
+  color: white;
+}
+
+.search-btn:hover {
+  background-color: #2563eb;
 }
 
 /* 表格样式 */
@@ -1158,7 +1152,6 @@ const handleLogout = async () => {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
 }
 
 .data-table th,
@@ -1169,153 +1162,95 @@ const handleLogout = async () => {
 }
 
 .data-table th {
-  background-color: var(--gray-50);
+  font-size: 0.75rem;
   font-weight: 600;
-  color: var(--gray-700);
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .table-row:hover {
   background-color: var(--gray-50);
 }
 
-.time-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.time-info .date {
-  font-size: 0.75rem;
-  color: var(--gray-500);
-}
-
-.time-info .time {
-  font-size: 0.875rem;
-  color: var(--gray-800);
-}
-
-.user-details {
-  display: flex;
-  flex-direction: column;
-}
-
-.user-details .username {
-  font-weight: 500;
-  color: var(--gray-800);
-  margin: 0;
-}
-
-.user-details .department {
-  font-size: 0.75rem;
-  color: var(--gray-500);
-}
-
-/* 按钮样式 */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-  text-decoration: none;
-}
-
-.btn-sm {
+.status-tag {
   padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
   font-size: 0.75rem;
+  font-weight: 500;
 }
 
-.btn-primary {
+.status-tag.pending {
+  background-color: var(--yellow-50);
+  color: var(--yellow-500);
+}
+
+.status-tag.approved {
+  background-color: var(--green-50);
+  color: var(--green-500);
+}
+
+.status-tag.rejected {
+  background-color: var(--red-50);
+  color: var(--red-500);
+}
+
+.view-btn {
   background-color: var(--primary);
   color: white;
+  margin-right: 0.5rem;
 }
 
-.btn-primary:hover {
-  background-color: #0d47a1;
+.view-btn:hover {
+  background-color: #2563eb;
 }
 
-.btn-default {
-  background-color: var(--gray-100);
-  color: var(--gray-700);
-}
-
-.btn-default:hover {
-  background-color: var(--gray-200);
-}
-
-.btn-success {
+.approve-btn {
   background-color: var(--success);
   color: white;
+  margin-right: 0.5rem;
 }
 
-.btn-success:hover {
+.approve-btn:hover {
   background-color: #059669;
 }
 
-.btn-danger {
+.reject-btn {
   background-color: var(--danger);
   color: white;
 }
 
-.btn-danger:hover {
+.reject-btn:hover {
   background-color: #dc2626;
 }
 
-/* 工具类 */
-.text-primary {
-  color: var(--primary);
-  text-decoration: none;
-}
-
-.text-primary:hover {
-  text-decoration: underline;
-}
-
-.text-success {
-  color: var(--success);
-}
-
-.text-danger {
-  color: var(--danger);
-}
-
-.font-medium {
-  font-weight: 500;
-}
-
 /* 分页样式 */
-.pagination-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  border-top: 1px solid var(--gray-200);
-}
-
 .pagination {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .pagination-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--gray-200);
   background-color: white;
-  border: 1px solid var(--gray-300);
-  border-radius: 0.25rem;
-  padding: 0.25rem 0.75rem;
+  color: var(--gray-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .pagination-btn:hover {
-  background-color: var(--gray-50);
-  border-color: var(--gray-400);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .pagination-btn.active {
@@ -1327,39 +1262,25 @@ const handleLogout = async () => {
 .pagination-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  border-color: var(--gray-200);
+  color: var(--gray-400);
+  background-color: white;
 }
 
 .pagination-info {
-  font-size: 0.75rem;
-  color: var(--gray-500);
   margin-left: 1rem;
+  font-size: 0.875rem;
+  color: var(--gray-600);
 }
 
-/* 状态标签 */
-.status-tag {
-  display: inline-block;
-  padding: 0.125rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
+.page-size-select {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--gray-300);
+  border-radius: 0.25rem;
+  margin: 0 0.25rem;
 }
 
-.status-pending {
-  background-color: var(--blue-50);
-  color: var(--primary);
-}
-
-.status-approved {
-  background-color: var(--green-50);
-  color: var(--success);
-}
-
-.status-rejected {
-  background-color: var(--red-50);
-  color: var(--danger);
-}
-
-/* 模态框 */
+/* 弹窗样式 */
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -1370,7 +1291,7 @@ const handleLogout = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 1000;
   padding: 1rem;
 }
 
@@ -1379,15 +1300,19 @@ const handleLogout = async () => {
   border-radius: 0.5rem;
   width: 100%;
   max-width: 500px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.reject-modal {
+  max-width: 400px;
 }
 
 .modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--gray-200);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--gray-200);
 }
 
 .modal-title {
@@ -1397,95 +1322,124 @@ const handleLogout = async () => {
   margin: 0;
 }
 
-.close-btn {
+.modal-close {
   background: none;
   border: none;
-  color: var(--gray-500);
+  font-size: 1.5rem;
   cursor: pointer;
-  font-size: 1.25rem;
+  color: var(--gray-500);
+  transition: color 0.2s ease;
 }
 
-.close-btn:hover {
+.modal-close:hover {
   color: var(--gray-800);
 }
 
 .modal-body {
-  padding: 1.25rem;
+  padding: 1.5rem;
 }
 
 .detail-item {
   margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.detail-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .detail-label {
-  font-size: 0.875rem;
-  color: var(--gray-500);
-  margin: 0 0 0.25rem 0;
   font-weight: 500;
+  color: var(--gray-700);
+  display: inline-block;
+  width: 80px;
 }
 
 .detail-value {
-  font-size: 0.9375rem;
   color: var(--gray-800);
-  margin: 0;
+}
+
+.reason-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--gray-300);
+  border-radius: 0.375rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  resize: vertical;
+}
+
+.reason-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.textarea-hint {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  margin-top: 0.5rem;
+  text-align: right;
 }
 
 .modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--gray-200);
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
-  padding: 1rem 1.25rem;
-  border-top: 1px solid var(--gray-200);
+  gap: 1rem;
 }
 
-/* 响应式调整 */
-@media (max-width: 767px) {
-  .main-content {
-    margin-left: 0;
-    padding: 1rem 0.5rem;
+.close-btn,
+.cancel-btn {
+  background-color: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.close-btn:hover,
+.cancel-btn:hover {
+  background-color: var(--gray-200);
+}
+
+.confirm-reject-btn {
+  background-color: var(--danger);
+  color: white;
+}
+
+.confirm-reject-btn:hover {
+  background-color: #ea5858;
+}
+
+/* 动画效果 */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  
-  .content-wrapper {
-    padding: 0 0.75rem;
-  }
-  
-  .hidden-md {
-    display: none !important;
-  }
-  .sidebar-hidden {
-    transform: translateX(-100%);
-  }
-  .md-hidden {
-    display: block !important;
-  }
-  
-  .sidebar {
-    transition: transform 0.3s ease;
-    position: fixed;
-    z-index: 40;
-  }
-  
-  .filter-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
-  
-  .filter-actions {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-  
-  .filter-actions .btn {
-    flex: 1;
-    min-width: 100px;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
+/* 响应式工具类 */
+.hidden-md {
+  display: none;
+}
 
 @media (min-width: 768px) {
+  .hidden-md {
+    display: block;
+  }
   .md-hidden {
-    display: none !important;
+    display: none;
   }
 }
 </style>
