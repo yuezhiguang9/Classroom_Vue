@@ -11,7 +11,7 @@
           <div class="header-right hidden-md">
             <div class="user-menu">
               <div class="user-info">
-                <span class="username">{{ userName || '教秘用户' }}</span>
+                <span class="user_name">{{ user_name || '教秘用户' }}</span>
                 <a href="#" class="dropdown-item logout-btn" @click.prevent="handleLogout">退出登录</a>
               </div>
             </div>
@@ -149,8 +149,8 @@
                     >
                       <option value="">全部状态</option>
                       <option value="待审核">待审核</option>
-                      <option value="已通过">已通过</option>
-                      <option value="已驳回">已驳回</option>
+                      <option value="已批准">已批准</option>
+                      <option value="已拒绝">已拒绝</option>
                     </select>
                   </div>
                   
@@ -163,12 +163,13 @@
                     >
                       <option value="">全部楼栋</option>
                       <option 
-                        v-for="building in buildings" 
-                        :value="building.id" 
-                        :key="building.id"
-                      >
-                        {{ building.name }}
-                      </option>
+        v-for="building in buildings" 
+        :value="building.building_id"  
+        :key="building.building_id"   
+        
+      >
+        {{ building.buildingName }}  <!-- 使用后端的buildingName字段 -->
+      </option>
                     </select>
                   </div>
                   
@@ -186,7 +187,7 @@
                 
                 <div class="filter-row">
                   <div class="form-group">
-                    <label class="form-label">开始日期</label>
+                    <label class="form-label">使用教室开始日期</label>
                     <input 
                       type="date" 
                       class="form-input" 
@@ -196,7 +197,7 @@
                   </div>
                   
                   <div class="form-group">
-                    <label class="form-label">结束日期</label>
+                    <label class="form-label">使用教室结束日期</label>
                     <input 
                       type="date" 
                       class="form-input" 
@@ -247,7 +248,7 @@
                   <tr v-if="loading">
                     <td colspan="9" class="text-center py-4">加载中...</td>
                   </tr>
-                  <tr v-for="(item, index) in logsData" :key="index" v-else-if="item">
+                  <tr v-for="(item, index) in logsData" :key="index">
                     <td>{{ item.user_name }}</td>
                     <td>{{ item.phone }}</td>
                     <td>{{ item.book_time }}</td>
@@ -258,8 +259,8 @@
                     <td>
                       <span class="status-tag" :class="{
                         'pending': item.apply_status === '待审核',
-                        'approved': item.apply_status === '已通过',
-                        'rejected': item.apply_status === '已驳回'
+                        'approved': item.apply_status === '已批准',
+                        'rejected': item.apply_status === '已拒绝'
                       }">
                         {{ item.apply_status }}
                       </span>
@@ -305,13 +306,13 @@
               </button>
               
               <!-- 动态生成页码按钮 -->
-              <template v-for="pageNum in visiblePages" :key="pageNum">
+              <template v-for="page in visiblePages" :key="page">
                 <button 
                   class="pagination-btn" 
-                  :class="{ 'active': pagination.page === pageNum }" 
-                  @click="changePage(pageNum)"
+                  :class="{ 'active': pagination.page === page }" 
+                  @click="changePage(page)"
                 >
-                  {{ pageNum }}
+                  {{ page }}
                 </button>
               </template>
               
@@ -379,15 +380,15 @@
             <span class="detail-label">人数：</span>
             <span class="detail-value">{{ currentDetail.person_count || '-' }}</span>
           </div>
-          <div class="detail-item" v-if="currentDetail.apply_status === '已通过'">
+          <div class="detail-item" v-if="currentDetail.apply_status === '已批准'">
             <span class="detail-label">审核时间：</span>
             <span class="detail-value">{{ currentDetail.approve_time || '-' }}</span>
           </div>
-          <div class="detail-item" v-if="currentDetail.apply_status === '已驳回'">
+          <div class="detail-item" v-if="currentDetail.apply_status === '已拒绝'">
             <span class="detail-label">驳回时间：</span>
             <span class="detail-value">{{ currentDetail.reject_time || '-' }}</span>
           </div>
-          <div class="detail-item" v-if="currentDetail.apply_status === '已驳回' && currentDetail.reject_reason">
+          <div class="detail-item" v-if="currentDetail.apply_status === '已拒绝' && currentDetail.reject_reason">
             <span class="detail-label">驳回原因：</span>
             <span class="detail-value">{{ currentDetail.reject_reason }}</span>
           </div>
@@ -434,20 +435,21 @@ const route = useRoute();
 const router = useRouter();
 
 // 响应式状态
-const userName = ref('');
+const user_name = ref('');
 const isScrolled = ref(false);
 const sidebarOpen = ref(true);
 const isMobile = ref(false);
 
-// 筛选条件
+
+// 修改筛选参数定义（驼峰命名，匹配后端）
 const filter = ref({
-  apply_status: '',
-  building_id: '',
-  user_name: '',
-  date_start: '',
-  date_end: '',
-  page: 1,
-  size: 10
+  page: 1,        // 对应后端pageNum
+  size: 10,      // 对应后端pageSize
+  apply_status: '',   // 对应后端apply_status
+  user_name: '',      // 对应后端user_name
+  building_id: '',    // 对应后端 building_id
+  date_start: '',     // 对应后端date_start
+  date_end: ''        // 对应后端date_end
 });
 
 // 列表数据
@@ -524,6 +526,73 @@ const currentApplyId = ref('');
 // 搜索防抖计时器
 const searchTimer = ref(null);
 
+// 检查值是否为空
+const isEmpty = (value) => {
+  return value === undefined || value === null || value === '';
+};
+
+// 检查参数类型
+const checkParamTypes = (params) => {
+  const typeInfo = {};
+  for (const key in params) {
+    typeInfo[key] = {
+      type: typeof params[key],
+      value: params[key],
+      isEmpty: isEmpty(params[key])
+    };
+  }
+  return typeInfo;
+};
+
+// 获取请求头
+const getRequestHeaders = () => {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+  
+  console.log('请求头信息:', {
+    hasToken: !!token,
+    headers: headers
+  });
+  
+  return headers;
+};
+
+// 检查响应结构
+const checkResponseStructure = (response) => {
+  console.log('📦 开始检查响应结构');
+  
+  if (!response) {
+    console.error('⚠️ 响应为空');
+    ElMessage.error('查询失败，未获取到数据');
+    return false;
+  }
+  
+  // 检查状态码
+  if (response.code !== undefined) {
+    console.log('后端状态码:', response.code);
+    if (response.code !== 200 && response.code !== 0) {
+      console.warn('⚠️ 后端返回非成功状态码:', response.code, '消息:', response.msg || response.message);
+      ElMessage.error(response.msg || response.message || '查询失败');
+      return false;
+    }
+  } else {
+    console.warn('⚠️ 响应中没有状态码code字段');
+  }
+  
+  // 检查数据字段
+  if (!response.data) {
+    console.warn('⚠️ 响应中没有data字段');
+    logsData.value = [];
+    pagination.value.total = 0;
+    return false;
+  }
+  
+  return true;
+};
+
 // 处理搜索输入防抖
 const handleSearchInput = () => {
   if (searchTimer.value) {
@@ -538,66 +607,354 @@ const handleSearchInput = () => {
 // 获取楼栋数据
 const fetchBuildings = async () => {
   try {
-    const response = await axios.get('/buildings');
-    if (response.data && response.data.data) {
-      buildings.value = response.data.data;
+    console.log('开始获取楼栋数据，请求地址:', '/common/getBuildings');
+    
+    const headers = getRequestHeaders();
+    const response = await axios.get('/common/getBuildings', { headers });
+    
+    console.log('楼栋接口响应:', response);
+    
+    // 检查响应结构
+    if (!checkResponseStructure(response)) {
+      return;
+    }
+    
+    let buildingData = null;
+    if (Array.isArray(response.data)) {
+      buildingData = response.data;
+    } else if (response.data && response.data.data) {
+      buildingData = response.data.data;
+    }
+    
+    console.log('解析到的楼栋数据:', buildingData);
+    
+    if (Array.isArray(buildingData) && buildingData.length > 0) {
+      buildings.value = buildingData;
+      console.log('成功加载楼栋数据，共', buildingData.length, '条');
+      
+      // 验证数据结构是否正确（使用后端实际返回的字段名）
+      const firstBuilding = buildingData[0];
+      if (!firstBuilding.building_id || !firstBuilding.buildingName) {
+        console.warn('楼栋数据结构不符合预期，可能导致显示异常');
+        ElMessage.warning('楼栋数据格式异常');
+      } else {
+        console.log('楼栋数据结构验证通过');
+      }
+    } else {
+      console.warn('未获取到有效楼栋数据或数据为空数组');
+      buildings.value = [];
     }
   } catch (error) {
     console.error('获取楼栋数据失败:', error);
-    ElMessage.error('获取楼栋信息失败');
+    
+    if (error.response) {
+      console.error('错误响应详情:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        headers: error.response.headers
+      });
+      
+      if (error.response.status === 401) {
+        console.warn('⚠️ 可能是未登录或Token失效');
+        ElMessage.error('登录已过期，请重新登录');
+      } else if (error.response.status === 403) {
+        console.warn('⚠️ 没有查询权限');
+        ElMessage.error('您没有权限查询该数据');
+      } else if (error.response.status === 404) {
+        console.warn('⚠️ 接口地址不存在');
+        ElMessage.error('查询接口不存在');
+      } else {
+        ElMessage.error(`查询失败: ${error.response.data?.msg || '服务器错误'}`);
+      }
+    } else if (error.request) {
+      console.error('⚠️ 没有收到后端响应:', error.request);
+      ElMessage.error('未收到服务器响应，请检查网络');
+    } else {
+      console.error('⚠️ 请求准备阶段出错:', error.message);
+      ElMessage.error(`查询失败: ${error.message}`);
+    }
   }
 };
 
-// 获取日志列表数据
+// 获取申请记录日志列表数据
 const fetchLogs = async () => {
+  console.groupCollapsed('🔍 开始执行查询操作');
+  console.log('查询触发时间:', new Date().toISOString());
+  
   loading.value = true;
   try {
     // 构建请求参数
     const params = {
-      ...filter.value,
+      apply_status: filter.value.apply_status,
+      building_id: filter.value.building_id,
+      user_name: filter.value.user_name,
+      date_start: filter.value.date_start,
+      date_end: filter.value.date_end,
       page: filter.value.page,
       size: filter.value.size
     };
     
-    const response = await axios.get('/sec/listLogs', { params });
+    console.log('构建的查询参数:', {
+      参数数量: Object.keys(params).length,
+      具体参数: params,
+      参数类型检查: checkParamTypes(params)
+    });
+    
+    const headers = getRequestHeaders();
+    
+    const requestStartTime = Date.now();
+    console.log('发送请求到后端:', {
+      url: '/sec/listLogs',
+      method: 'GET',
+      params: params,
+      headers: headers
+    });
+    
+    const response = await axios.get('/sec/listLogs', { 
+      params,
+      headers
+    });
+    
+    const requestDuration = Date.now() - requestStartTime;
+    console.log(`✅ 请求成功，耗时: ${requestDuration}ms`);
+    console.log('后端返回的完整响应数据:', response);
+    console.log('后端响应数据类型:', typeof response);
+    console.log('后端响应数据结构:', Object.keys(response));
+    
+    // 检查响应结构
+    if (!checkResponseStructure(response)) {
+      return;
+    }
+    
+    // 验证日志数据结构的辅助函数
+    const validateLogDataStructure = (data) => {
+      // 检查是否为对象
+      if (typeof data !== 'object' || data === null) {
+        console.error('日志数据不是有效的对象');
+        return false;
+      }
+      
+      // 检查必要字段
+      const requiredFields = ['list', 'total'];
+      const missingFields = requiredFields.filter(field => !(field in data));
+      
+      if (missingFields.length > 0) {
+        console.error(`日志数据缺少必要字段: ${missingFields.join(', ')}`);
+        return false;
+      }
+      
+      // 检查list是否为数组
+      if (!Array.isArray(data.list)) {
+        console.error('日志数据的list不是数组');
+        return false;
+      }
+      
+      // 检查total是否为数字
+      if (typeof data.total !== 'number') {
+        console.error('日志数据的total不是数字');
+        return false;
+      }
+      
+      return true;
+    };
     
     if (response.data && response.data.data) {
       const data = response.data.data;
-      logsData.value = data.list || [];
-      pagination.value.total = data.total || 0;
-      pagination.value.page = data.page || 1;
-      pagination.value.size = data.size || 10;
+      console.log('从响应中提取的业务数据:', data);
+      console.log('业务数据类型:', typeof data);
+      console.log('业务数据包含的字段:', data ? Object.keys(data) : '无数据');
       
-      // 更新统计数据
-      todayPending.value = data.today_pending || 0;
-      weekApproved.value = data.week_approved || 0;
-      weekRejected.value = data.week_rejected || 0;
+      // 先检查是否为数组（后端直接返回数组的情况）
+      if (Array.isArray(data)) {
+        console.log('检测到后端返回数组结构，进行兼容处理');
+        
+        // 直接使用数组作为列表数据
+        logsData.value = data || [];
+        // 数组长度作为总条数
+        pagination.value.total = data.length || 0;
+        // 分页信息使用前端传入的参数
+        pagination.value.page = filter.value.page || 1;
+        pagination.value.size = filter.value.size || 10;
+        
+        // 统计数据使用默认值（因数组结构可能不包含这些信息）
+        todayPending.value = 0;
+        weekApproved.value = 0;
+        weekRejected.value = 0;
+        todayPendingChange.value = 0;
+        weekApprovedChange.value = 0;
+        weekRejectedChange.value = 0;
+        
+        console.log('数组结构处理结果:', {
+          数据量: logsData.value.length,
+          总条数: pagination.value.total
+        });
+      }
+      // 再检查是否为预期的对象结构
+      else if (typeof data === 'object' && data !== null) {
+        // 验证数据结构
+        if (!validateLogDataStructure(data)) {
+          console.error('日志数据结构验证失败，使用默认空数据');
+          logsData.value = [];
+          pagination.value.total = 0;
+          return;
+        }
+        
+        logsData.value = data.list || [];
+        pagination.value.total = data.total || 0;
+        pagination.value.page = data.page || 1;
+        pagination.value.size = data.size || 10;
+        
+        console.log('分页信息:', {
+          总条数: data.total,
+          当前页: pagination.value.page,
+          每页条数: pagination.value.size,
+          总页数: Math.ceil(data.total / pagination.value.size)
+        });
+        
+        // 验证统计数据
+        if (typeof data.today_pending !== 'number') {
+          console.warn('today_pending不是有效的数字，使用默认值0');
+          todayPending.value = 0;
+        } else {
+          todayPending.value = data.today_pending;
+        }
+        
+        if (typeof data.week_approved !== 'number') {
+          console.warn('week_approved不是有效的数字，使用默认值0');
+          weekApproved.value = 0;
+        } else {
+          weekApproved.value = data.week_approved;
+        }
+        
+        if (typeof data.week_rejected !== 'number') {
+          console.warn('week_rejected不是有效的数字，使用默认值0');
+          weekRejected.value = 0;
+        } else {
+          weekRejected.value = data.week_rejected;
+        }
+        
+        // 验证趋势数据
+        if (typeof data.today_pending_change !== 'number') {
+          console.warn('today_pending_change不是有效的数字，使用默认值0');
+          todayPendingChange.value = 0;
+        } else {
+          todayPendingChange.value = data.today_pending_change;
+        }
+        
+        if (typeof data.week_approved_change !== 'number') {
+          console.warn('week_approved_change不是有效的数字，使用默认值0');
+          weekApprovedChange.value = 0;
+        } else {
+          weekApprovedChange.value = data.week_approved_change;
+        }
+        
+        if (typeof data.week_rejected_change !== 'number') {
+          console.warn('week_rejected_change不是有效的数字，使用默认值0');
+          weekRejectedChange.value = 0;
+        } else {
+          weekRejectedChange.value = data.week_rejected_change;
+        }
+        
+        console.log('对象结构处理结果:', {
+          数据量: logsData.value.length,
+          总条数: pagination.value.total,
+          统计数据: {
+            todayPending: todayPending.value,
+            weekApproved: weekApproved.value,
+            weekRejected: weekRejected.value
+          }
+        });
+        
+        // 打印第一条数据结构，方便检查字段匹配
+        if (logsData.value.length > 0) {
+          console.log('第一条申请数据的结构:', logsData.value[0]);
+          console.log('申请数据包含的字段:', Object.keys(logsData.value[0]));
+        }
+      }
+      // 既不是数组也不是对象的情况
+      else {
+        console.error('日志数据既不是数组也不是有效的对象');
+        logsData.value = [];
+        pagination.value.total = 0;
+        return;
+      }
       
-      // 更新趋势数据
-      todayPendingChange.value = data.today_pending_change || 0;
-      weekApprovedChange.value = data.week_approved_change || 0;
-      weekRejectedChange.value = data.week_rejected_change || 0;
+      console.log(`📊 后端返回数据数量: ${logsData.value.length}`);
+      if (logsData.value.length > 0) {
+        console.log('第一条数据详情:', logsData.value[0]);
+      } else {
+        console.log('💡 后端返回空数组，可能没有匹配的数据');
+        ElMessage.info('没有找到匹配的申请数据');
+      }
+    } else {
+      console.warn('响应数据结构不符合预期');
+      logsData.value = [];
+      pagination.value.total = 0;
+      ElMessage.warning('获取数据格式异常，请联系管理员');
     }
   } catch (error) {
-    console.error('获取审核列表失败:', error);
-    ElMessage.error('获取数据失败，请重试');
+    console.error('❌ 请求发生错误:', error);
+    
+    if (error.response) {
+      console.error('错误响应详情:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        headers: error.response.headers
+      });
+      
+      if (error.response.status === 401) {
+        console.warn('⚠️ 可能是未登录或Token失效');
+        ElMessage.error('登录已过期，请重新登录');
+      } else if (error.response.status === 403) {
+        console.warn('⚠️ 没有查询权限');
+        ElMessage.error('您没有权限查询该数据');
+      } else if (error.response.status === 404) {
+        console.warn('⚠️ 接口地址不存在');
+        ElMessage.error('查询接口不存在');
+      } else {
+        ElMessage.error(`查询失败: ${error.response.data?.msg || '服务器错误'}`);
+      }
+    } else if (error.request) {
+      console.error('⚠️ 没有收到后端响应:', error.request);
+      ElMessage.error('未收到服务器响应，请检查网络');
+    } else {
+      console.error('⚠️ 请求准备阶段出错:', error.message);
+      ElMessage.error(`查询失败: ${error.message}`);
+    }
+    
     logsData.value = [];
     pagination.value.total = 0;
   } finally {
     loading.value = false;
+    console.groupEnd();
   }
 };
 
+
 // 查看详情
 const viewDetails = async (applyId) => {
+  console.log('👀 查看申请详情，ID:', applyId);
+  
   try {
+    const headers = getRequestHeaders();
     const response = await axios.get('/sec/viewLogs', {
-      params: { apply_id: applyId }
+      params: { apply_id: applyId },
+      headers
     });
+    
+    console.log('获取详情响应:', response);
+    console.log('详情响应结构:', response ? Object.keys(response) : '无数据');
+    
     if (response.data && response.data.data) {
+      console.log('详情数据:', response.data.data);
+      console.log('详情数据字段:', Object.keys(response.data.data));
       currentDetail.value = response.data.data;
       showDetails.value = true;
+      console.log('详情数据加载成功');
     } else {
+      console.warn('未获取到有效详情数据');
       ElMessage.error('获取详情失败');
     }
   } catch (error) {
@@ -614,26 +971,42 @@ const closeDetails = () => {
 
 // 处理通过
 const handleApprove = async (applyId) => {
+  console.log('📌 处理通过申请，ID:', applyId);
+  
   ElMessageBox.confirm('确定要通过该申请吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'info'
   }).then(async () => {
     try {
-      await axios.post('/sec/approve', { apply_id: applyId });
-      ElMessage.success('操作成功');
-      fetchLogs(); // 刷新列表
+      const headers = getRequestHeaders();
+      const response = await axios.post('/sec/approve', 
+        { apply_id: applyId },
+        { headers }
+      );
+      
+      console.log('审核通过响应:', response);
+      
+      if (response.data && (response.data.code === 200 || response.data.code === 0)) {
+        ElMessage.success('操作成功');
+        fetchLogs(); // 刷新列表
+      } else {
+        console.warn('审核通过失败，后端返回非成功状态');
+        ElMessage.error(response.data?.msg || '操作失败');
+      }
     } catch (error) {
       console.error('审核通过失败:', error);
       ElMessage.error('操作失败，请重试');
     }
   }).catch(() => {
     // 取消操作
+    console.log('已取消审核通过操作');
   });
 };
 
 // 处理驳回
 const handleReject = (applyId) => {
+  console.log('📌 准备驳回申请，ID:', applyId);
   currentApplyId.value = applyId;
   rejectReason.value = '';
   showRejectReason.value = true;
@@ -641,6 +1014,7 @@ const handleReject = (applyId) => {
 
 // 取消驳回
 const cancelReject = () => {
+  console.log('已取消驳回操作');
   showRejectReason.value = false;
   currentApplyId.value = '';
   rejectReason.value = '';
@@ -653,16 +1027,27 @@ const confirmReject = async () => {
     return;
   }
   
+  console.log('📌 确认驳回申请，ID:', currentApplyId.value, '原因:', rejectReason.value);
+  
   try {
-    await axios.post('/sec/reject', {
+    const headers = getRequestHeaders();
+    const response = await axios.post('/sec/reject', {
       apply_id: currentApplyId.value,
       reject_reason: rejectReason.value.trim()
-    });
-    ElMessage.success('驳回成功');
-    showRejectReason.value = false;
-    currentApplyId.value = '';
-    rejectReason.value = '';
-    fetchLogs(); // 刷新列表
+    }, { headers });
+    
+    console.log('驳回操作响应:', response);
+    
+    if (response.data && (response.data.code === 200 || response.data.code === 0)) {
+      ElMessage.success('驳回成功');
+      showRejectReason.value = false;
+      currentApplyId.value = '';
+      rejectReason.value = '';
+      fetchLogs(); // 刷新列表
+    } else {
+      console.warn('驳回操作失败，后端返回非成功状态');
+      ElMessage.error(response.data?.msg || '操作失败');
+    }
   } catch (error) {
     console.error('驳回失败:', error);
     ElMessage.error('操作失败，请重试');
@@ -671,6 +1056,8 @@ const confirmReject = async () => {
 
 // 重置筛选条件
 const resetFilter = () => {
+  console.log('🔄 重置查询表单');
+  
   filter.value = {
     apply_status: '',
     building_id: '',
@@ -684,14 +1071,16 @@ const resetFilter = () => {
 };
 
 // 改变页码
-const changePage = (pageNum) => {
-  if (pageNum === '...') return; // 跳过省略号
-  filter.value.page = pageNum;
+const changePage = (page) => {
+  if (page === '...') return; // 跳过省略号
+  console.log(`📄 页码变更为: ${page}`);
+  filter.value.page = page;
   fetchLogs();
 };
 
 // 改变每页条数
 const changePageSize = () => {
+  console.log(`📏 每页条数变更为: ${pagination.value.size}`);
   filter.value.size = pagination.value.size;
   filter.value.page = 1; // 重置到第一页
   fetchLogs();
@@ -760,11 +1149,14 @@ const visiblePages = computed(() => {
 
 // 生命周期
 onMounted(() => {
+  console.log('SecretaryListLogs组件已挂载');
+  
   // 获取用户信息
   const user = localStorage.getItem('currentUser');
   if (user) {
     const userData = JSON.parse(user);
-    userName.value = userData.name || '教秘用户';
+    user_name.value = userData.name || '教秘用户';
+    console.log('当前登录用户:', user_name.value);
   }
   
   // 加载数据
@@ -805,6 +1197,7 @@ onUnmounted(() => {
 // 监听路由变化
 watch(route, () => {
   // 路由变化时刷新数据
+  console.log('路由发生变化，刷新数据');
   fetchLogs();
 });
 </script>
@@ -892,7 +1285,7 @@ watch(route, () => {
   gap: 1rem;
 }
 
-.username {
+.user_name {
   font-size: 0.875rem;
   color: var(--gray-700);
 }

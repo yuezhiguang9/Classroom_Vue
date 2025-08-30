@@ -119,6 +119,8 @@
             
             <div class="filter-content">
               <div class="filter-form">
+                
+                
                 <!-- 楼栋筛选 -->
                 <div class="form-group">
                   <label class="form-label">按楼栋筛选</label>
@@ -131,10 +133,10 @@
                     <option value="">全部楼栋</option>
                     <option 
                       v-for="building in validBuildings" 
-                      :value="building.id" 
-                      :key="building.id"
+                      :value="building.buildingId" 
+                      :key="building.buildingId"
                     >
-                      {{ building.name || '未知楼栋' }}
+                      {{ building.buildingName || '未知楼栋' }}
                     </option>
                   </select>
                   <select 
@@ -217,7 +219,8 @@
                   <tr v-if="loading">
                     <td colspan="5" class="text-center py-4">加载中...</td>
                   </tr>
-                  <tr v-for="(item, index) in usageData" :key="index" class="table-row" v-else-if="item">
+                  <!-- 修复：移除了错误的v-else-if="item"条件 -->
+                  <tr v-for="(item, index) in usageData" :key="index" class="table-row">
                     <td>{{ item.classroom }}</td>
                     <td>{{ item.room_type || '未知类型' }}</td>
                     <td>{{ item.usage_count }}次</td>
@@ -304,6 +307,9 @@ export default {
     const trendIcon = ref('');
     const trendText = ref('');
 
+    // 时间范围
+    const timeRange = ref('week'); // 默认周统计
+
     // 筛选条件
     const filter = ref({
       building_id: '',
@@ -324,10 +330,9 @@ export default {
     // 楼栋数据
     const buildings = ref([]);
     const validBuildings = computed(() => {
+      // 只过滤掉null和undefined，避免误删有效数据
       return buildings.value.filter(building => 
-        building.id !== undefined && 
-        building.id !== null && 
-        building.name
+        building !== null && building !== undefined
       );
     });
 
@@ -382,30 +387,77 @@ export default {
     });
 
     // 获取楼栋数据
-const fetchBuildings = async () => {
-  try {
-    const response = await axios.get('/sec/buildings'); // 假设后端提供楼栋列表接口
-    if (response.data?.code === 200) {
-      buildings.value = response.data.data;
-    }
-  } catch (error) {
-    console.error('加载楼栋数据失败:', error);
-    ElMessage.error('加载楼栋数据失败');
-  }
-};
+    const fetchBuildings = async () => {
+      try {
+        console.log('开始获取楼栋数据，请求地址:', '/common/getBuildings');
+        
+        const response = await axios.get('/common/getBuildings');
+        
+        console.log('楼栋接口响应:', response);
+        
+        if (response && response.code === 200) {
+          console.log('请求成功，状态码:', response.code);
+          
+          let buildingData = null;
+          if (Array.isArray(response.data)) {
+            buildingData = response.data;
+          } else if (response.data && response.data.data) {
+            buildingData = response.data.data;
+          }
+          
+          console.log('解析到的楼栋数据:', buildingData);
+          
+          if (Array.isArray(buildingData) && buildingData.length > 0) {
+            buildings.value = buildingData;
+            console.log('成功加载楼栋数据，共', buildingData.length, '条');
+            
+            // 显示实际接收的字段结构，帮助调试
+            console.log('楼栋数据字段结构:', Object.keys(buildingData[0]));
+            
+            // 验证数据结构并给出明确提示
+            const firstBuilding = buildingData[0];
+            if (!firstBuilding.buildingId) {
+              console.warn('楼栋数据缺少buildingId字段');
+            }
+            if (!firstBuilding.buildingName) {
+              console.warn('楼栋数据缺少buildingName字段');
+            }
+          } else {
+            console.warn('未获取到有效楼栋数据或数据为空数组');
+            buildings.value = [];
+          }
+        } else {
+          console.error('获取楼栋数据失败，后端返回状态:', response?.code, '消息:', response?.msg);
+          ElMessage.error(`获取楼栋信息失败: ${response?.msg || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('获取楼栋数据失败:', error);
+        if (error.response) {
+          console.error('错误状态码:', error.response.status);
+          console.error('错误响应内容:', error.response.data);
+        }
+        ElMessage.error('网络错误，无法获取楼栋数据');
+      }
+    };
 
-// 获取教室类型数据
-const fetchRoomTypes = async () => {
+    // 获取教室类型数据 - 修复了404错误，修改了接口地址
+    const fetchRoomTypes = async () => {
   try {
-    const response = await axios.get('/sec/room-types'); // 假设后端提供类型列表接口
+    // 修改接口地址为正确的路径，例如：
+    const response = await axios.get('/common/getRoomTypes'); 
     if (response.data?.code === 200) {
       roomTypes.value = response.data.data;
+    } else {
+      console.warn('获取教室类型失败，使用默认类型列表');
+      roomTypes.value = ['没成功传数据先顶替'];
     }
   } catch (error) {
     console.error('加载教室类型失败:', error);
-    ElMessage.error('加载教室类型失败');
+    ElMessage.warning('无法加载教室类型列表，使用默认类型');
+    roomTypes.value = ['没成功传数据先顶替'];
   }
 };
+
 
     // 获取使用率数据
     const fetchUsageData = async () => {
@@ -426,6 +478,7 @@ const fetchRoomTypes = async () => {
       try {
         // 构建查询参数
         const params = {
+          time_range: timeRange.value,
           building_id: filter.value.building_id || undefined,
           room_type: filter.value.room_type || undefined,
           date_start: filter.value.date_start || undefined,
@@ -434,7 +487,11 @@ const fetchRoomTypes = async () => {
           size: filter.value.size || 10
         };
         
+        console.log('发送请求参数:', params);
+        
         const response = await axios.get('/sec/classroomUsage', { params });
+        
+        console.log('教室使用率接口响应:', response);
         
         if (response.data?.code === 200) {
           const data = response.data;
@@ -465,20 +522,22 @@ const fetchRoomTypes = async () => {
           // 更新表格数据
           usageData.value = data.data?.list || [];
           
-          // 更新分页数据（严格按照接口文档返回的分页参数）
+          // 更新分页数据
           pagination.value.page = data.data?.page || 1;
           pagination.value.size = data.data?.size || 10;
           pagination.value.total = data.data?.total || 0;
 
         } else {
           // 接口返回错误状态
-          ElMessage.error('获取数据失败，请重试');
+          ElMessage.error(`获取数据失败: ${response.data?.msg || '请重试'}`);
           usageData.value = [];
           pagination.value.total = 0;
         }
 
       } catch (error) {
         console.error('获取使用率数据失败:', error);
+        console.error('错误响应内容:', error.response?.data);
+        
         // 错误状态重置
         usageData.value = [];
         avgUsageRate.value = '获取失败';
@@ -488,6 +547,8 @@ const fetchRoomTypes = async () => {
         leastUsedCount.value = 0;
         trendText.value = '数据获取失败';
         pagination.value.total = 0;
+        
+        ElMessage.error(`请求错误: ${error.response?.data?.msg || error.message}`);
       } finally {
         loading.value = false;
       }
@@ -535,6 +596,7 @@ const fetchRoomTypes = async () => {
         page: 1,
         size: 10
       };
+      timeRange.value = 'week'; // 重置时间范围
       pagination.value.page = 1;
       fetchUsageData();
     };
@@ -583,7 +645,7 @@ const fetchRoomTypes = async () => {
 
     // 筛选条件变化时重置分页
     watch(
-      () => [filter.value.building_id, filter.value.room_type, filter.value.date_start, filter.value.date_end],
+      () => [filter.value.building_id, filter.value.room_type, filter.value.date_start, filter.value.date_end, timeRange.value],
       () => {
         filter.value.page = 1;
         pagination.value.page = 1;
@@ -607,13 +669,14 @@ const fetchRoomTypes = async () => {
       trendClass,
       trendIcon,
       trendText,
+      timeRange,
       roomTypes,
       filter,
       pagination,
       visiblePages,
       validBuildings,
       usageData,
-      route,  // 确保导出route
+      route,
       toggleSidebar,
       changePage,
       fetchUsageData,
