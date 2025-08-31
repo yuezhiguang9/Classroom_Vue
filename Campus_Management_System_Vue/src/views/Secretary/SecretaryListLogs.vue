@@ -353,7 +353,7 @@
         <div class="modal-body">
           <div class="detail-item">
             <span class="detail-label">申请人：</span>
-            <span class="detail-value">{{ currentDetail.userName || '-' }}</span>
+            <span class="detail-value">{{ currentDetail.user_name || '-' }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">联系电话：</span>
@@ -361,7 +361,7 @@
           </div>
           <div class="detail-item">
             <span class="detail-label">预约时间：</span>
-            <span class="detail-value">{{ currentDetail.bookTime || '-' }}</span>
+            <span class="detail-value">{{ currentDetail.book_time || '-' }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">教室：</span>
@@ -447,8 +447,8 @@ const filter = ref({
   applyStatus: '',   // 对应后端applyStatus
   userName: '',      // 对应后端userName
   buildingId: '',    // 对应后端buildingId
-  dateStart: '',     // 对应后端dateStart
-  dateEnd: ''        // 对应后端dateEnd
+  date_start: '',     // 对应后端dateStart
+  date_end: ''        // 对应后端dateEnd
 });
 
 // 列表数据
@@ -643,7 +643,7 @@ const handleApprove = async (applyId) => {
     type: 'info'
   }).then(async () => {
     try {
-      await axios.post('/sec/approve', { apply_id: applyId });
+      await axios.post('/sec/updateStatus', { apply_id: applyId });
       ElMessage.success('操作成功');
       fetchLogs(); // 刷新列表
     } catch (error) {
@@ -677,7 +677,7 @@ const confirmReject = async () => {
   }
   
   try {
-    await axios.post('/sec/reject', {
+    await axios.post('/sec/updateStatus', {
       apply_id: currentApplyId.value,
       reject_reason: rejectReason.value.trim()
     });
