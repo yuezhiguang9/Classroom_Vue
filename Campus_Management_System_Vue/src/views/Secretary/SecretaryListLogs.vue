@@ -85,7 +85,7 @@
             <div class="stat-card animate-fade-in" style="animation-delay: 0.2s">
               <div class="stat-content">
                 <div>
-                  <p class="stat-label">本周批准</p>
+                  <p class="stat-label">本周通过</p>
                   <h3 class="stat-value">{{ weekApproved || '0' }}</h3>
                   
                   <p class="stat-trend">
@@ -109,7 +109,7 @@
             <div class="stat-card animate-fade-in" style="animation-delay: 0.3s">
               <div class="stat-content">
                 <div>
-                  <p class="stat-label">本周拒绝</p>
+                  <p class="stat-label">本周驳回</p>
                   <h3 class="stat-value">{{ weekRejected || '0' }}</h3>
                   
                   <p class="stat-trend">
@@ -149,8 +149,8 @@
                     >
                       <option value="">全部状态</option>
                       <option value="待审核">待审核</option>
-                      <option value="已批准">已批准</option>
-                      <option value="已拒绝">已拒绝</option>
+                      <option value="已通过">已通过</option>
+                      <option value="已驳回">已驳回</option>
                     </select>
                   </div>
                   
@@ -258,8 +258,8 @@
                     <td>
                       <span class="status-tag" :class="{
                         'pending': item.applyStatus === '待审核',
-                        'approved': item.applyStatus === '已批准',
-                        'rejected': item.applyStatus === '已拒绝'
+                        'approved': item.applyStatus === '已通过',
+                        'rejected': item.applyStatus === '已驳回'
                       }">
                         {{ item.applyStatus }}
                       </span>
@@ -276,14 +276,14 @@
                         @click="handleApprove(item.apply_id)"
                         v-if="item.applyStatus === '待审核'"
                       >
-                        批准
+                        通过
                       </button>
                       <button 
                         class="btn reject-btn" 
                         @click="handleReject(item.apply_id)"
                         v-if="item.applyStatus === '待审核'"
                       >
-                        拒绝
+                        驳回
                       </button>
                     </td>
                   </tr>
@@ -379,16 +379,16 @@
             <span class="detail-label">人数：</span>
             <span class="detail-value">{{ currentDetail.personCount || '-' }}</span>
           </div>
-          <div class="detail-item" v-if="currentDetail.applyStatus === '已批准'">
+          <div class="detail-item" v-if="currentDetail.applyStatus === '已通过'">
             <span class="detail-label">审核时间：</span>
             <span class="detail-value">{{ currentDetail.approve_time || '-' }}</span>
           </div>
-          <div class="detail-item" v-if="currentDetail.applyStatus === '已拒绝'">
-            <span class="detail-label">拒绝时间：</span>
+          <div class="detail-item" v-if="currentDetail.applyStatus === '已驳回'">
+            <span class="detail-label">驳回时间：</span>
             <span class="detail-value">{{ currentDetail.reject_time || '-' }}</span>
           </div>
-          <div class="detail-item" v-if="currentDetail.applyStatus === '已拒绝' && currentDetail.reject_reason">
-            <span class="detail-label">拒绝原因：</span>
+          <div class="detail-item" v-if="currentDetail.applyStatus === '已驳回' && currentDetail.reject_reason">
+            <span class="detail-label">驳回原因：</span>
             <span class="detail-value">{{ currentDetail.reject_reason }}</span>
           </div>
         </div>
@@ -398,25 +398,25 @@
       </div>
     </div>
     
-    <!-- 拒绝原因弹窗 -->
+    <!-- 驳回原因弹窗 -->
     <div class="modal-backdrop" v-if="showRejectReason">
       <div class="modal reject-modal">
         <div class="modal-header">
-          <h3 class="modal-title">拒绝申请</h3>
+          <h3 class="modal-title">驳回申请</h3>
           <button class="modal-close" @click="cancelReject">×</button>
         </div>
         <div class="modal-body">
           <textarea 
             v-model="rejectReason" 
             class="reason-textarea" 
-            placeholder="请输入拒绝原因"
+            placeholder="请输入驳回原因"
             rows="4"
           ></textarea>
-          <p class="textarea-hint">请说明拒绝原因，以便申请人了解情况</p>
+          <p class="textarea-hint">请说明驳回原因，以便申请人了解情况</p>
         </div>
         <div class="modal-footer">
           <button class="btn cancel-btn" @click="cancelReject">取消</button>
-          <button class="btn confirm-reject-btn" @click="confirmReject">确认拒绝</button>
+          <button class="btn confirm-reject-btn" @click="confirmReject">确认驳回</button>
         </div>
       </div>
     </div>
@@ -460,8 +460,8 @@ const weekRejected = ref(0);
 
 // 统计趋势数据
 const todayPendingChange = ref(0); // 今日待审核与昨日变化
-const weekApprovedChange = ref(0); // 本周批准与上周变化
-const weekRejectedChange = ref(0); // 本周拒绝与上周变化
+const weekApprovedChange = ref(0); // 本周通过与上周变化
+const weekRejectedChange = ref(0); // 本周驳回与上周变化
 
 // 趋势显示计算属性
 const todayPendingTrendIcon = computed(() => {
@@ -517,7 +517,7 @@ const buildings = ref([]);
 const showDetails = ref(false);
 const currentDetail = ref({});
 
-// 拒绝相关
+// 驳回相关
 const showRejectReason = ref(false);
 const rejectReason = ref('');
 const currentApplyId = ref('');
@@ -567,7 +567,7 @@ const fetchBuildings = async () => {
           console.warn('楼栋数据结构不符合预期，可能导致显示异常');
           ElMessage.warning('楼栋数据格式异常');
         } else {
-          console.log('楼栋数据结构验证批准');
+          console.log('楼栋数据结构验证通过');
         }
       } else {
         console.warn('未获取到有效楼栋数据或数据为空数组');
@@ -635,9 +635,9 @@ const closeDetails = () => {
   currentDetail.value = {};
 };
 
-// 处理批准
+// 处理通过
 const handleApprove = async (applyId) => {
-  ElMessageBox.confirm('确定要批准该申请吗？', '提示', {
+  ElMessageBox.confirm('确定要通过该申请吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'info'
@@ -647,7 +647,7 @@ const handleApprove = async (applyId) => {
       ElMessage.success('操作成功');
       fetchLogs(); // 刷新列表
     } catch (error) {
-      console.error('审核批准失败:', error);
+      console.error('审核通过失败:', error);
       ElMessage.error('操作失败，请重试');
     }
   }).catch(() => {
@@ -655,24 +655,24 @@ const handleApprove = async (applyId) => {
   });
 };
 
-// 处理拒绝
+// 处理驳回
 const handleReject = (applyId) => {
   currentApplyId.value = applyId;
   rejectReason.value = '';
   showRejectReason.value = true;
 };
 
-// 取消拒绝
+// 取消驳回
 const cancelReject = () => {
   showRejectReason.value = false;
   currentApplyId.value = '';
   rejectReason.value = '';
 };
 
-// 确认拒绝
+// 确认驳回
 const confirmReject = async () => {
   if (!rejectReason.value.trim()) {
-    ElMessage.warning('请输入拒绝原因');
+    ElMessage.warning('请输入驳回原因');
     return;
   }
   
@@ -681,13 +681,13 @@ const confirmReject = async () => {
       apply_id: currentApplyId.value,
       reject_reason: rejectReason.value.trim()
     });
-    ElMessage.success('拒绝成功');
+    ElMessage.success('驳回成功');
     showRejectReason.value = false;
     currentApplyId.value = '';
     rejectReason.value = '';
     fetchLogs(); // 刷新列表
   } catch (error) {
-    console.error('拒绝失败:', error);
+    console.error('驳回失败:', error);
     ElMessage.error('操作失败，请重试');
   }
 };
