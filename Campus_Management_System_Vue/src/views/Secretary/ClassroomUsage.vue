@@ -499,7 +499,48 @@ export default {
       }
       fetchUsageData();
     };
-
+// 获取统计卡片数据
+// 获取统计卡片数据
+const fetchClassroomMetrics = async () => {
+  try {
+    // 传递筛选条件作为参数，特别是日期范围
+    const params = {
+      buildingId: filter.value.buildingId || undefined,
+      roomType: filter.value.roomType || undefined,
+      dateStart: filter.value.dateStart || undefined,
+      dateEnd: filter.value.dateEnd || undefined
+    };
+    
+    const response = await axios.get('/sec/calculateClassroomMetrics', { params });
+    
+    if (response.code === 200) {
+      // 检查data是否存在
+      if (response.data) {
+        const metrics = response.data;
+        avgUsageRate.value = metrics.avgUsageRate ? `${metrics.avgUsageRate}%` : '0%';
+        mostUsedClassroom.value = metrics.mostUsed || '暂无数据';
+        mostUsedCount.value = metrics.mostUsageCount || 0;
+        leastUsedClassroom.value = metrics.leastUsed || '暂无数据';
+        leastUsedCount.value = metrics.leastUsageCount || 0;
+        calculateTrend(metrics.changeRate); // 注意这里使用changeRate而不是weekly_comparison
+      } else {
+        // 处理data为null的情况
+        console.warn('统计数据为空');
+        avgUsageRate.value = '0%';
+        mostUsedClassroom.value = '暂无数据';
+        mostUsedCount.value = 0;
+        leastUsedClassroom.value = '暂无数据';
+        leastUsedCount.value = 0;
+        trendText.value = '无数据';
+      }
+    } else {
+      ElMessage.error(`获取统计数据失败: ${response.msg || '未知错误'}`);
+    }
+  } catch (error) {
+    console.error('获取教室统计数据失败:', error);
+    ElMessage.error('获取统计数据时发生网络错误');
+  }
+};
     // 获取使用率数据
     const fetchUsageData = async () => {
       loading.value = true;
@@ -527,7 +568,8 @@ export default {
           // 更新分页信息
           pagination.value = {
             page: current || 1,
-            size: size || 10,
+            // size: size || 10,
+            size: filter.value.size || 10,
             total: total || 0,
             pages: pages || 0
           };
@@ -544,7 +586,12 @@ export default {
           calculateTrend(statData.changeRate);
 
           // 列表数据 - 使用records数组
-          usageData.value = records || []; 
+             // 列表数据 - 使用records数组
+      usageData.value = records.map(item => ({
+        ...item,
+        // 确保使用率显示百分号
+        usageRate: item.usageRate ? `${item.usageRate}%` : '0%'
+      }));
           console.log('【列表数据】前端表格显示的内容:', usageData.value);
           console.log('【分页信息】当前页:', pagination.value.page, '总页数:', pagination.value.pages, '总记录数:', pagination.value.total);
         } else {
@@ -654,10 +701,10 @@ export default {
         userName.value = userData.name || '教秘用户';
       }
       
-      // 先加载基础数据，再加载统计数据
       Promise.all([fetchBuildings(), fetchRoomTypes()]).then(() => {
-        // 初始化时不自动查询，等待用户选择日期后查询
-      });
+    // 加载统计卡片数据
+    fetchClassroomMetrics();
+  });
       
       // 监听滚动事件
       const handleScroll = () => {
