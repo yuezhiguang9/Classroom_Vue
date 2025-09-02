@@ -58,7 +58,7 @@
           
           <!-- 统计卡片 -->
           <div class="stats-grid">
-            <!-- 本周平均使用率卡片 -->
+            <!-- 本时段平均使用率卡片 -->
             <div class="stat-card animate-fade-in">
               <div class="stat-content">
                 <div>
@@ -119,14 +119,12 @@
             
             <div class="filter-content">
               <div class="filter-form">
-                
-                
                 <!-- 楼栋筛选 -->
                 <div class="form-group">
                   <label class="form-label">按楼栋筛选</label>
                   <select 
                     class="form-select" 
-                    v-model="filter.building_id" 
+                    v-model="filter.buildingId" 
                     @change="handleFilterChange"
                     v-if="filter" 
                   >
@@ -151,13 +149,12 @@
                 <!-- 教室类型筛选 -->
                 <div class="form-group">
                   <label class="form-label">教室类型</label>
-                  <select class="form-select" v-model="filter.room_type" @change="handleFilterChange">
-  <option value="">全部类型</option>
-  <option v-for="(type, index) in roomTypes" :value="type" :key="index">
-    {{ type }}
-  </option>
-</select>
-
+                  <select class="form-select" v-model="filter.roomType" @change="handleFilterChange">
+                    <option value="">全部类型</option>
+                    <option v-for="(type, index) in roomTypes" :value="type" :key="index">
+                      {{ type }}
+                    </option>
+                  </select>
                 </div>
                 
                 <!-- 开始日期 -->
@@ -166,7 +163,7 @@
                   <input 
                     type="date" 
                     class="form-input" 
-                    v-model="filter.date_start"
+                    v-model="filter.dateStart"
                     @change="handleFilterChange"
                   >
                 </div>
@@ -177,7 +174,7 @@
                   <input 
                     type="date" 
                     class="form-input" 
-                    v-model="filter.date_end"
+                    v-model="filter.dateEnd"
                     @change="handleFilterChange"
                   >
                 </div>
@@ -191,57 +188,101 @@
                   >
                     重置
                   </button>
-                  <!-- 同时修改模板中的查询按钮事件 -->
-<button type="button" class="btn search-btn" @click="handleQuery">
-  查询
-</button>
+                  <button type="button" class="btn search-btn" @click="handleQuery">
+                    查询
+                  </button>
                 </div>
               </div>
             </div>
           </div>
           
           <!-- 教室使用率表格 -->
-<div class="card table-card animate-fade-in" style="animation-delay: 0.5s">
-  <div class="table-wrapper">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>教室</th>
-          <th>教室类型</th>
-          <th>本时段使用次数</th>
-          <th>本时段使用率</th>
-          <th>较上周变化</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- 加载状态 -->
-        <tr v-if="loading">
-          <td colspan="5" class="text-center py-4">加载中...</td>
-        </tr>
-        <!-- 实际数据渲染 -->
-        <tr v-for="(item, index) in usageData" :key="index" class="table-row">
-          <td>{{ item.classroom }}</td>
-          <td>{{ item.room_type || '未知类型' }}</td>
-          <td>{{ item.usage_count }}次</td>
-          <td>{{ item.usage_rate }}</td>
-          <td>
-            <span class="status-tag" :class="{
-              'text-success': item.change_rate?.startsWith('+'),
-              'text-danger': item.change_rate && !item.change_rate.startsWith('+') && item.change_rate !== '0%'
-            }">
-              <i class="fa" :class="item.change_rate?.startsWith('+') ? 'fa-arrow-up mr-1' : item.change_rate?.startsWith('-') ? 'fa-arrow-down mr-1' : ''"></i> 
-              {{ item.change_rate || '0%' }}
-            </span>
-          </td>
-        </tr>
-        <!-- 无数据状态 -->
-        <tr v-if="!loading && usageData.length === 0">
-          <td colspan="5" class="text-center py-4">暂无数据</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
+          <div class="card table-card animate-fade-in" style="animation-delay: 0.5s">
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>教室</th>
+                    <th>教室类型</th>
+                    <th>本时段使用次数</th>
+                    <th>本时段使用率</th>
+                    <th>较上周变化</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- 加载状态 -->
+                  <tr v-if="loading">
+                    <td colspan="5" class="text-center py-4">加载中...</td>
+                  </tr>
+                  <!-- 实际数据渲染 -->
+                  <tr v-for="(item, index) in usageData" :key="index" class="table-row">
+                    <td>{{ item.classroom }}</td>
+                    <td>{{ item.roomType || '未知类型' }}</td>
+                    <td>{{ item.usageCount }}次</td>
+                    <td>{{ item.usageRate }}</td>
+                    <td>
+                      <span class="status-tag" :class="{
+                        'text-success': item.changeRate?.startsWith('+'),
+                        'text-danger': item.changeRate && !item.changeRate.startsWith('+') && item.changeRate !== '0%'
+                      }">
+                        <i class="fa" :class="item.changeRate?.startsWith('+') ? 'fa-arrow-up mr-1' : item.changeRate?.startsWith('-') ? 'fa-arrow-down mr-1' : ''"></i> 
+                        {{ item.changeRate || '0%' }}
+                      </span>
+                    </td>
+                  </tr>
+                  <!-- 无数据状态 -->
+                  <tr v-if="!loading && usageData.length === 0">
+                    <td colspan="5" class="text-center py-4">暂无数据</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- 分页控件 -->
+            <div class="pagination" v-if="!loading && pagination.total > 0">
+              <button 
+                class="pagination-btn" 
+                :disabled="pagination.page === 1" 
+                @click="changePage(pagination.page - 1)"
+              >
+                <i class="fa fa-chevron-left"></i>
+              </button>
+              
+              <!-- 动态生成页码按钮 -->
+              <template v-for="page in visiblePages" :key="page">
+                <button 
+                  class="pagination-btn" 
+                  :class="{ 'active': pagination.page === page }" 
+                  @click="changePage(page)"
+                >
+                  {{ page }}
+                </button>
+              </template>
+              
+              <button 
+                class="pagination-btn" 
+                :disabled="pagination.page >= Math.ceil(pagination.total / pagination.size)" 
+                @click="changePage(pagination.page + 1)"
+              >
+                <i class="fa fa-chevron-right"></i>
+              </button>
+              
+              <div class="pagination-info">
+                共 {{ pagination.total }} 条，
+                每页 
+                <select 
+                  class="page-size-select" 
+                  v-model="pagination.size" 
+                  @change="changePageSize"
+                >
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                </select>
+                条
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     </div>
@@ -278,12 +319,12 @@ export default {
     const trendText = ref('');
 
    
-    // 筛选条件
+    // 筛选条件 - 使用驼峰命名法匹配后端
     const filter = ref({
-      building_id: '',
-      room_type: '',
-      date_start: null,
-      date_end: null,
+      buildingId: '',
+      roomType: '',
+      dateStart: null,
+      dateEnd: null,
       page: 1,
       size: 10
     });
@@ -354,6 +395,14 @@ export default {
       return pages;
     });
 
+    // 每页显示条数变更方法
+    const changePageSize = () => {
+      filter.value.size = pagination.value.size;
+      filter.value.page = 1;  // 重置到第一页
+      pagination.value.page = 1;
+      fetchUsageData();
+    };
+    
     // 获取楼栋数据
     const fetchBuildings = async () => {
       try {
@@ -378,18 +427,6 @@ export default {
           if (Array.isArray(buildingData) && buildingData.length > 0) {
             buildings.value = buildingData;
             console.log('成功加载楼栋数据，共', buildingData.length, '条');
-            
-            // 显示实际接收的字段结构，帮助调试
-            console.log('楼栋数据字段结构:', Object.keys(buildingData[0]));
-            
-            // 验证数据结构并给出明确提示
-            const firstBuilding = buildingData[0];
-            if (!firstBuilding.buildingId) {
-              console.warn('楼栋数据缺少buildingId字段');
-            }
-            if (!firstBuilding.buildingName) {
-              console.warn('楼栋数据缺少buildingName字段');
-            }
           } else {
             console.warn('未获取到有效楼栋数据或数据为空数组');
             buildings.value = [];
@@ -408,138 +445,159 @@ export default {
       }
     };
 
-// 修改获取教室类型数据的方法
-const fetchRoomTypes = async () => {
-  try {
-    console.log('开始获取教室类型数据，请求地址:', '/common/getRoomTypes');
-    
-    const response = await axios.get('/common/getRoomTypes'); 
-    console.log('教室类型接口响应:', response);
-    
-    // 关键修复：code在response根节点，不是response.data里
-    if (response.code === 200) {  // 修正判断条件
-      // 检查数据是否存在且为数组
-      if (Array.isArray(response.data)) {  // 直接使用response.data（接口返回的data就是数组）
-        // 从对象数组中提取room_type字段
-        const types = response.data.map(item => item.room_type).filter(Boolean);
+    // 获取教室类型数据
+    const fetchRoomTypes = async () => {
+      try {
+        console.log('开始获取教室类型数据，请求地址:', '/common/getRoomTypes');
         
-        console.log('提取到的教室类型:', types);
-        roomTypes.value = types;
+        const response = await axios.get('/common/getRoomTypes'); 
+        console.log('教室类型接口响应:', response);
         
-        // 如果没有获取到有效类型，给出提示
-        if (roomTypes.value.length === 0) {
-          console.warn('未提取到有效教室类型数据');
-          roomTypes.value = ['无可用类型'];
+        if (response.code === 200) {
+          // 检查数据是否存在且为数组
+          if (Array.isArray(response.data)) {
+            // 从对象数组中提取room_type字段
+            const types = response.data.map(item => item.room_type).filter(Boolean);
+            
+            console.log('提取到的教室类型:', types);
+            roomTypes.value = types;
+            
+            // 如果没有获取到有效类型，给出提示
+            if (roomTypes.value.length === 0) {
+              console.warn('未提取到有效教室类型数据');
+              roomTypes.value = ['无可用类型'];
+            }
+          } else {
+            console.error('教室类型数据格式错误，不是数组:', response.data);
+            roomTypes.value = ['数据格式错误'];
+          }
+        } else {
+          console.warn('获取教室类型失败，状态码:', response.code, '消息:', response.msg);
+          roomTypes.value = ['获取失败'];
         }
-      } else {
-        console.error('教室类型数据格式错误，不是数组:', response.data);
-        roomTypes.value = ['数据格式错误'];
+      } catch (error) {
+        console.error('加载教室类型失败:', error);
+        if (error.response) {
+          console.error('错误状态码:', error.response.status);
+          console.error('错误响应内容:', error.response.data);
+        }
+        ElMessage.warning('无法加载教室类型列表');
+        roomTypes.value = ['加载失败'];
       }
-    } else {
-      console.warn('获取教室类型失败，状态码:', response.code, '消息:', response.msg);
-      roomTypes.value = ['获取失败'];
-    }
-  } catch (error) {
-    console.error('加载教室类型失败:', error);
-    if (error.response) {
-      console.error('错误状态码:', error.response.status);
-      console.error('错误响应内容:', error.response.data);
-    }
-    ElMessage.warning('无法加载教室类型列表');
-    roomTypes.value = ['加载失败'];
-  }
-};
-
-// 在查询按钮点击时触发（修改fetchUsageData调用处）
-const handleQuery = () => {
-  if (!filter.value.date_start || !filter.value.date_end) {
-    ElMessage.warning('请选择开始日期和结束日期');
-    return; // 未选日期则不发起请求
-  }
-  fetchUsageData(); // 选了日期才查询
-};
-
-
-// 获取使用率数据（筛选后的数据来源）
-const fetchUsageData = async () => {
-  loading.value = true;
-  try {
-    const params = {
-      building_id: filter.value.building_id || undefined,
-      room_type: filter.value.room_type || undefined,
-      date_start: filter.value.date_start || undefined,
-      date_end: filter.value.date_end || undefined,
-      page: filter.value.page || 1,
-      size: filter.value.size || 10
     };
 
-    // 1. 打印发送的筛选参数（确认筛选条件是否正确传递）
-    console.log('【筛选参数】发送到后端的条件:', params);
-    
-    const response = await axios.get('/sec/classroomUsage', { params });
-    
-    // 2. 打印接口原始响应（确认后端返回的完整数据）
-    console.log('【接口响应】后端返回的完整数据:', response);
+    // 查询按钮点击事件
+    const handleQuery = () => {
+      if (!filter.value.dateStart || !filter.value.dateEnd) {
+        ElMessage.warning('请选择开始日期和结束日期');
+        return;
+      }
+      // 确保开始日期不晚于结束日期
+      if (new Date(filter.value.dateStart) > new Date(filter.value.dateEnd)) {
+        ElMessage.warning('开始日期不能晚于结束日期');
+        return;
+      }
+      fetchUsageData();
+    };
 
-    if (response.code === 200) {
-      const statData = response.data.statistics || (response.data[0] || {});
-           
-      // 3. 打印统计数据原始对象（确认从后端提取的数据）
-      console.log('【统计数据原始值】从后端提取的统计信息:', statData);
+    // 获取使用率数据
+    const fetchUsageData = async () => {
+      loading.value = true;
+      try {
+        // 参数使用驼峰命名法，与后端保持一致
+        const params = {
+          buildingId: filter.value.buildingId || undefined,
+          roomType: filter.value.roomType || undefined,
+          dateStart: filter.value.dateStart || undefined,
+          dateEnd: filter.value.dateEnd || undefined,
+          page: filter.value.page || 1,
+          size: filter.value.size || 10
+        };
 
-      // 统计卡片数据赋值 + 日志
-      avgUsageRate.value = statData.avgUsageRate || '0%';
-      console.log('【平均使用率】前端显示值:', avgUsageRate.value);
+        console.log('【筛选参数】发送到后端的条件:', params);
+        
+        const response = await axios.get('/sec/classroomUsage', { params });
+        
+        console.log('【接口响应】后端返回的完整数据:', response);
 
-      mostUsedClassroom.value = statData.mostUsed || '暂无数据';
-      console.log('【最常使用教室】前端显示值:', mostUsedClassroom.value);
+        if (response.code === 200) {
+          // 从response.data中提取分页数据
+          const { current, pages, size, total, records } = response.data;
+          
+          // 更新分页信息
+          pagination.value = {
+            page: current || 1,
+            size: size || 10,
+            total: total || 0,
+            pages: pages || 0
+          };
+          
+          // 统计卡片数据
+          const statData = response.data.statistics || {};
+          avgUsageRate.value = statData.avgUsageRate || '0%';
+          mostUsedClassroom.value = statData.mostUsed || '暂无数据';
+          mostUsedCount.value = statData.mostUsageCount || 0;
+          leastUsedClassroom.value = statData.leastUsed || '暂无数据';
+          leastUsedCount.value = statData.leastUsageCount || 0;
 
-      mostUsedCount.value = statData.mostUsageCount || 0;
-      console.log('【最常使用次数】前端显示值:', mostUsedCount.value);
+          // 计算趋势数据
+          calculateTrend(statData.changeRate);
 
-      leastUsedClassroom.value = statData.leastUsed || '暂无数据';
-      console.log('【最少使用教室】前端显示值:', leastUsedClassroom.value);
+          // 列表数据 - 使用records数组
+          usageData.value = records || []; 
+          console.log('【列表数据】前端表格显示的内容:', usageData.value);
+          console.log('【分页信息】当前页:', pagination.value.page, '总页数:', pagination.value.pages, '总记录数:', pagination.value.total);
+        } else {
+          console.log('【接口响应失败】状态码:', response.code, '消息:', response.msg);
+          // 重置数据
+          avgUsageRate.value = '0%';
+          mostUsedClassroom.value = '暂无数据';
+          mostUsedCount.value = 0;
+          leastUsedClassroom.value = '暂无数据';
+          leastUsedCount.value = 0;
+          usageData.value = [];
+          pagination.value = { page: 1, size: 10, total: 0, pages: 0 };
+          ElMessage.error(`查询失败: ${response?.msg || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('【请求异常】获取数据失败:', error);
+        // 重置数据
+        avgUsageRate.value = '0%';
+        mostUsedClassroom.value = '暂无数据';
+        mostUsedCount.value = 0;
+        leastUsedClassroom.value = '暂无数据';
+        leastUsedCount.value = 0;
+        usageData.value = [];
+        pagination.value = { page: 1, size: 10, total: 0, pages: 0 };
+        ElMessage.error('网络错误，无法获取数据');
+      } finally {
+        loading.value = false;
+      }
+    };
 
-      leastUsedCount.value = statData.leastUsageCount || 0;
-      console.log('【最少使用次数】前端显示值:', leastUsedCount.value);
-
-      // 列表数据赋值 + 日志
-      usageData.value = response.data || []; 
-      console.log('【列表数据】前端表格显示的内容:', usageData.value);
-      console.log('【列表长度】表格数据条数:', usageData.value.length);
-
-      pagination.value.total = response.data?.length || 0;
-    } else {
-      // 接口响应失败时的日志
-      console.log('【接口响应失败】状态码:', response.code, '消息:', response.msg);
-      avgUsageRate.value = '0%';
-      mostUsedClassroom.value = '暂无数据';
-      mostUsedCount.value = 0;
-      leastUsedClassroom.value = '暂无数据';
-      leastUsedCount.value = 0;
-      usageData.value = [];
-      pagination.value.total = 0;
-    }
-  } catch (error) {
-    // 异常错误日志
-    console.error('【请求异常】获取数据失败:', error);
-    console.error('【错误详情】状态码:', error.response?.status, '响应内容:', error.response?.data);
-    
-    // 重置数据
-    avgUsageRate.value = '0%';
-    mostUsedClassroom.value = '暂无数据';
-    mostUsedCount.value = 0;
-    leastUsedClassroom.value = '暂无数据';
-    leastUsedCount.value = 0;
-    usageData.value = [];
-    pagination.value.total = 0;
-  } finally {
-    loading.value = false;
-    console.log('【请求结束】加载状态已关闭');
-  }
-};
-
-
+    // 计算趋势数据
+    const calculateTrend = (changeRate) => {
+      if (!changeRate) {
+        trendText.value = '无历史数据';
+        trendClass.value = 'text-gray-500';
+        trendIcon.value = '';
+        return;
+      }
+      
+      if (changeRate.startsWith('+')) {
+        trendText.value = `较上期上升 ${changeRate}`;
+        trendClass.value = 'text-success';
+        trendIcon.value = 'fa-arrow-up';
+      } else if (changeRate.startsWith('-')) {
+        trendText.value = `较上期下降 ${changeRate}`;
+        trendClass.value = 'text-danger';
+        trendIcon.value = 'fa-arrow-down';
+      } else {
+        trendText.value = '与上期持平';
+        trendClass.value = 'text-gray-500';
+        trendIcon.value = 'fa-minus';
+      }
+    };
 
     // 退出登录
     const handleLogout = () => {
@@ -549,7 +607,7 @@ const fetchUsageData = async () => {
         type: 'warning'
       }).then(async () => {
         try {
-          // 调用退出接口（如果有）
+          // 调用退出接口
           await axios.post('/auth/logout');
         } catch (error) {
           console.error('退出登录接口调用失败:', error);
@@ -576,10 +634,10 @@ const fetchUsageData = async () => {
     // 重置筛选条件
     const resetFilter = () => {
       filter.value = {
-        building_id: '',
-        room_type: '',
-        date_start: null,
-        date_end: null,
+        buildingId: '',
+        roomType: '',
+        dateStart: null,
+        dateEnd: null,
         page: 1,
         size: 10
       };
@@ -598,7 +656,7 @@ const fetchUsageData = async () => {
       
       // 先加载基础数据，再加载统计数据
       Promise.all([fetchBuildings(), fetchRoomTypes()]).then(() => {
-        fetchUsageData();
+        // 初始化时不自动查询，等待用户选择日期后查询
       });
       
       // 监听滚动事件
@@ -631,15 +689,12 @@ const fetchUsageData = async () => {
 
     // 筛选条件变化时重置分页
     watch(
-  // 只保留需要监听的筛选条件（删除timeRange.value）
-  () => [filter.value.building_id, filter.value.room_type, filter.value.date_start, filter.value.date_end],
-  () => {
-    filter.value.page = 1;
-    pagination.value.page = 1;
-    // 注释掉自动查询，保持通过按钮触发
-    // fetchUsageData();
-  }
-);
+      () => [filter.value.buildingId, filter.value.roomType, filter.value.dateStart, filter.value.dateEnd],
+      () => {
+        filter.value.page = 1;
+        pagination.value.page = 1;
+      }
+    );
 
     // 导出模板需要使用的变量和方法
     return {
@@ -668,7 +723,9 @@ const fetchUsageData = async () => {
       fetchUsageData,
       handleLogout,
       resetFilter,
-      handleFilterChange
+      handleFilterChange,
+      changePageSize,
+      handleQuery
     };
   }
 };
