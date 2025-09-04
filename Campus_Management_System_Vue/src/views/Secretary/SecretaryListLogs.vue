@@ -306,11 +306,13 @@
               
               <!-- 动态生成页码按钮 -->
               <template v-for="page in visiblePages" :key="page">
+                <span v-if="page === '...'" class="pagination-ellipsis">...</span>
                 <button 
-                  class="pagination-btn" 
-                  :class="{ 'active': pagination.page === page }" 
-                  @click="changePage(page)"
-                >
+    v-else
+    class="pagination-btn" 
+    :class="{ 'active': pagination.page === page }" 
+    @click="changePage(page)"
+  >
                   {{ page }}
                 </button>
               </template>
@@ -554,10 +556,11 @@ const fetchStats = async () => {
   } catch (error) {
     console.error('统计接口调用失败:', error);
     ElMessage.error('获取统计数据失败');
-  }
-  // 显示更具体的错误提示
+    // 显示更具体的错误提示
   const errorMsg = error.response?.data?.msg || `服务器错误 (${error.response?.status || '未知'})`;
     ElMessage.error(`获取统计数据失败: ${errorMsg}`);
+  }
+  
 };
 // 获取楼栋数据
 const fetchBuildings = async () => {
@@ -860,29 +863,34 @@ const visiblePages = computed(() => {
 });
 
 // 生命周期
+// 生命周期 - 修复后
 onMounted(() => {
-  const user = localStorage.getItem('currentUser');
-  if (user) {
-    const userData = JSON.parse(user);
-    userName.value = userData.name || '教秘用户';
-  }
-  
-  fetchBuildings().then(() => {
-    fetchLogs();
-  });
-   // 新增：获取统计数据
-   fetchStats();
+  // 1. 定义具名函数（事件监听）
   const handleScroll = () => {
     isScrolled.value = window.scrollY > 10;
   };
-  window.addEventListener('scroll', handleScroll);
-  
   const handleResize = () => {
     isMobile.value = window.innerWidth < 768;
     sidebarOpen.value = !isMobile.value;
   };
+  
+  // 2. 绑定事件监听
+  window.addEventListener('scroll', handleScroll);
   window.addEventListener('resize', handleResize);
-  handleResize();
+  handleResize(); // 初始化窗口状态
+  
+  // 3. 关键修复：添加数据获取逻辑（之前漏掉了这部分）
+  fetchBuildings().then(() => {
+    fetchLogs(); // 获取列表数据
+  });
+  fetchStats(); // 获取统计卡片数据（这行是卡片显示的核心）
+  
+  // 4. 清理事件监听
+  onUnmounted(() => {
+    window.removeEventListener('scroll', handleScroll);
+    window.removeEventListener('resize', handleResize);
+    if (searchTimer.value) clearTimeout(searchTimer.value);
+  });
 });
 
 // 清理事件监听
@@ -1536,5 +1544,15 @@ watch(route, () => {
   .md-hidden {
     display: none;
   }
+}
+
+.pagination-ellipsis {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-400);
+  cursor: default;
 }
 </style>
