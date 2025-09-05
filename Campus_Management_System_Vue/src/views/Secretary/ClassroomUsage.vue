@@ -503,7 +503,6 @@ export default {
 // 获取统计卡片数据
 const fetchClassroomMetrics = async () => {
   try {
-    // 传递筛选条件作为参数，特别是日期范围
     const params = {
       buildingId: filter.value.buildingId || undefined,
       roomType: filter.value.roomType || undefined,
@@ -513,30 +512,31 @@ const fetchClassroomMetrics = async () => {
     
     const response = await axios.get('/sec/calculateClassroomMetrics', { params });
     
-    if (response.code === 200) {
-      // 检查data是否存在
-      if (response.data) {
-        const metrics = response.data;
-        avgUsageRate.value = metrics.avgUsageRate ? `${metrics.avgUsageRate}%` : '0%';
-        mostUsedClassroom.value = metrics.mostUsed || '暂无数据';
-        mostUsedCount.value = metrics.mostUsageCount || 0;
-        leastUsedClassroom.value = metrics.leastUsed || '暂无数据';
-        leastUsedCount.value = metrics.leastUsageCount || 0;
-        calculateTrend(metrics.changeRate); // 注意这里使用changeRate而不是weekly_comparison
-      } else {
-        // 处理data为null的情况
-        console.warn('统计数据为空');
-        avgUsageRate.value = '0%';
-        mostUsedClassroom.value = '暂无数据';
-        mostUsedCount.value = 0;
-        leastUsedClassroom.value = '暂无数据';
-        leastUsedCount.value = 0;
-        trendText.value = '无数据';
-      }
+    if (response.code === 200 && response.data) {
+      const metrics = response.data;
+      // 1. 修正字段名：averageUsageRate（后端）→ 前端直接使用，加“%”显示
+      avgUsageRate.value = metrics.averageUsageRate ? `${metrics.averageUsageRate}%` : '0%';
+      // 2. 修正字段名：mostUsedClassroom（后端）→ 前端直接使用
+      mostUsedClassroom.value = metrics.mostUsedClassroom || '暂无数据';
+      // 3. 修正字段名：mostUsedCount（后端）→ 转数字后赋值
+      mostUsedCount.value = metrics.mostUsedCount ? Number(metrics.mostUsedCount) : 0;
+      // 4. 修正字段名：leastUsedClassroom（后端）→ 前端直接使用
+      leastUsedClassroom.value = metrics.leastUsedClassroom || '暂无数据';
+      // 5. 修正字段名：leastUsedCount（后端）→ 转数字后赋值
+      leastUsedCount.value = metrics.leastUsedCount ? Number(metrics.leastUsedCount) : 0;
+      // 6. 修正趋势数据字段：用 weeklyComparison（后端）代替 changeRate
+      calculateTrend(metrics.weeklyComparison);
     } else {
-      ElMessage.error(`获取统计数据失败: ${response.msg || '未知错误'}`);
+      // 异常处理（保持不变）
+      avgUsageRate.value = '0%';
+      mostUsedClassroom.value = '暂无数据';
+      mostUsedCount.value = 0;
+      leastUsedClassroom.value = '暂无数据';
+      leastUsedCount.value = 0;
+      trendText.value = '无数据';
     }
   } catch (error) {
+    // 错误处理（保持不变）
     console.error('获取教室统计数据失败:', error);
     ElMessage.error('获取统计数据时发生网络错误');
   }
@@ -576,14 +576,13 @@ const fetchClassroomMetrics = async () => {
           
           // 统计卡片数据
           const statData = response.data.statistics || {};
-          avgUsageRate.value = statData.avgUsageRate || '0%';
-          mostUsedClassroom.value = statData.mostUsed || '暂无数据';
-          mostUsedCount.value = statData.mostUsageCount || 0;
-          leastUsedClassroom.value = statData.leastUsed || '暂无数据';
-          leastUsedCount.value = statData.leastUsageCount || 0;
-
-          // 计算趋势数据
-          calculateTrend(statData.changeRate);
+      avgUsageRate.value = statData.averageUsageRate ? `${statData.averageUsageRate}%` : '0%';
+      mostUsedClassroom.value = statData.mostUsedClassroom || '暂无数据';
+      mostUsedCount.value = statData.mostUsedCount ? Number(statData.mostUsedCount) : 0;
+      leastUsedClassroom.value = statData.leastUsedClassroom || '暂无数据';
+      leastUsedCount.value = statData.leastUsedCount ? Number(statData.leastUsedCount) : 0;
+      calculateTrend(statData.weeklyComparison); // 修正趋势字段
+          
 
           // 列表数据 - 使用records数组
              // 列表数据 - 使用records数组
@@ -623,29 +622,38 @@ const fetchClassroomMetrics = async () => {
     };
 
     // 计算趋势数据
-    const calculateTrend = (changeRate) => {
-      if (!changeRate) {
-        trendText.value = '无历史数据';
-        trendClass.value = 'text-gray-500';
-        trendIcon.value = '';
-        return;
-      }
-      
-      if (changeRate.startsWith('+')) {
-        trendText.value = `较上期上升 ${changeRate}`;
-        trendClass.value = 'text-success';
-        trendIcon.value = 'fa-arrow-up';
-      } else if (changeRate.startsWith('-')) {
-        trendText.value = `较上期下降 ${changeRate}`;
-        trendClass.value = 'text-danger';
-        trendIcon.value = 'fa-arrow-down';
-      } else {
-        trendText.value = '与上期持平';
-        trendClass.value = 'text-gray-500';
-        trendIcon.value = 'fa-minus';
-      }
-    };
-
+  
+    const calculateTrend = (weeklyComparison) => {
+  if (!weeklyComparison) {
+    trendText.value = '无历史数据';
+    trendClass.value = 'text-gray-500';
+    trendIcon.value = '';
+    return;
+  }
+  
+  // 适配后端“weeklyComparison”的文本值
+  switch (weeklyComparison) {
+    case '上升':
+      trendText.value = '较上周上升';
+      trendClass.value = 'text-success';
+      trendIcon.value = 'fa-arrow-up';
+      break;
+    case '下降':
+      trendText.value = '较上周下降';
+      trendClass.value = 'text-danger';
+      trendIcon.value = 'fa-arrow-down';
+      break;
+    case '持平':
+      trendText.value = '与上周持平';
+      trendClass.value = 'text-gray-500';
+      trendIcon.value = 'fa-minus';
+      break;
+    default:
+      trendText.value = '数据异常';
+      trendClass.value = 'text-gray-500';
+      trendIcon.value = '';
+  }
+};
     // 退出登录
     const handleLogout = () => {
       ElMessageBox.confirm('确定要退出登录吗？', '提示', {
