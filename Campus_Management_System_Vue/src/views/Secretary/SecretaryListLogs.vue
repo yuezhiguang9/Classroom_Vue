@@ -267,20 +267,20 @@
                     <td>
                       <button 
                         class="btn view-btn" 
-                        @click="viewDetails(item.apply_id)"
+                        @click="viewDetails(item.applyid)"
                       >
                         查看详情
                       </button>
                       <button 
                         class="btn approve-btn" 
-                        @click="handleApprove(item.apply_id)"
+                        @click="handleApprove(item.applyid)"
                         v-if="item.applyStatus === '待审核'"
                       >
                         通过
                       </button>
                       <button 
                         class="btn reject-btn" 
-                        @click="handleReject(item.apply_id)"
+                        @click="handleReject(item.applyid)"
                         v-if="item.applyStatus === '待审核'"
                       >
                         驳回
@@ -356,7 +356,7 @@
         <div class="modal-body">
           <div class="detail-item">
             <span class="detail-label">申请人：</span>
-            <span class="detail-value">{{ currentDetail.user_name || '-' }}</span>
+            <span class="detail-value">{{ currentDetail.userName || '-' }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">联系电话：</span>
@@ -364,7 +364,7 @@
           </div>
           <div class="detail-item">
             <span class="detail-label">预约时间：</span>
-            <span class="detail-value">{{ currentDetail.book_time || '-' }}</span>
+            <span class="detail-value">{{ currentDetail.bookTime || '-' }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">教室：</span>
@@ -655,7 +655,8 @@ const fetchLogs = async () => {
 // 查看详情
 const viewDetails = async (applyId) => {
   // 增加参数验证
-  if (!applyId || applyId === '') {
+  console.log('传递的applyId:', applyId);  // 应输出 TEST010
+  if (!applyId) {
     ElMessage.error('申请ID无效');
     return;
   }
@@ -677,16 +678,14 @@ const viewDetails = async (applyId) => {
 
     if ([200, 0].includes(response.code) || response.status === 200) {
       currentDetail.value = response.data || {};
+      console.log('详情数据中的驳回原因:', currentDetail.value.rejectreason);
       showDetails.value = true;
     } else {
       ElMessage.error(response.msg || '获取详情失败');
     }
   } catch (error) {
-    console.error('获取详情失败:', {
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message
-    });
+    console.error('获取详情失败:', error);
+    ElMessage.error(`获取详情失败: ${error.response?.data?.msg || error.message}`);
     
     const errorMsg = error.response?.data?.msg 
       || `服务器错误 (${error.response?.status || '未知状态'})`
