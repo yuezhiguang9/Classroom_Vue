@@ -62,8 +62,7 @@
               <div class="stat-content">
                 <div>
                   <p class="stat-label">今日待审核</p>
-                  <h3 class="stat-value">{{ todayPending || '0' }}</h3>
-                  
+                  <h3 class="stat-value">{{ statsLoading ? '加载中...' : todayPending }}</h3>                  
                   <p class="stat-trend">
                       <i class="fa" :class="[
                         todayPendingTrendIcon,
@@ -86,8 +85,7 @@
               <div class="stat-content">
                 <div>
                   <p class="stat-label">本周通过</p>
-                  <h3 class="stat-value">{{ weekApproved || '0' }}</h3>
-                  
+                  <h3 class="stat-value">{{ statsLoading ? '加载中...' : weekApproved }}</h3>                  
                   <p class="stat-trend">
                     <i class="fa" :class="[
                       weekApprovedTrendIcon,
@@ -110,8 +108,7 @@
               <div class="stat-content">
                 <div>
                   <p class="stat-label">本周驳回</p>
-                  <h3 class="stat-value">{{ weekRejected || '0' }}</h3>
-                  
+                  <h3 class="stat-value">{{ statsLoading ? '加载中...' : weekRejected }}</h3>                  
                   <p class="stat-trend">
                     <i class="fa" :class="[
                         weekRejectedTrendIcon,
@@ -346,7 +343,7 @@
       </main>
     </div>
     
-    <!-- 详情弹窗 -->
+    <!-- 详情弹窗 - 展示所有后端返回字段 -->
     <div class="modal-backdrop" v-if="showDetails">
       <div class="modal">
         <div class="modal-header">
@@ -354,6 +351,11 @@
           <button class="modal-close" @click="closeDetails">×</button>
         </div>
         <div class="modal-body">
+          <!-- 所有后端返回的字段都在这里展示 -->
+          <div class="detail-item">
+            <span class="detail-label">申请状态：</span>
+            <span class="detail-value">{{ currentDetail.applyStatus || '-' }}</span>
+          </div>
           <div class="detail-item">
             <span class="detail-label">申请人：</span>
             <span class="detail-value">{{ currentDetail.userName || '-' }}</span>
@@ -367,32 +369,44 @@
             <span class="detail-value">{{ currentDetail.bookTime || '-' }}</span>
           </div>
           <div class="detail-item">
+            <span class="detail-label">楼栋：</span>
+            <span class="detail-value">{{ currentDetail.buildingName || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">学院：</span>
+            <span class="detail-value">{{ currentDetail.collegeName || '-' }}</span>
+          </div>
+          <div class="detail-item">
             <span class="detail-label">教室：</span>
             <span class="detail-value">{{ currentDetail.roomNum || '-' }}</span>
           </div>
           <div class="detail-item">
-            <span class="detail-label">使用时间：</span>
+            <span class="detail-label">使用日期：</span>
             <span class="detail-value">{{ currentDetail.date || '-' }}</span>
           </div>
           <div class="detail-item">
-            <span class="detail-label">用途：</span>
-            <span class="detail-value">{{ currentDetail.purpose || '-' }}</span>
+            <span class="detail-label">星期：</span>
+            <span class="detail-value">{{ currentDetail.dayOfWeek || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">周次：</span>
+            <span class="detail-value">{{ currentDetail.week || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">节次：</span>
+            <span class="detail-value">{{ currentDetail.period || '-' }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">人数：</span>
             <span class="detail-value">{{ currentDetail.personCount || '-' }}</span>
           </div>
-          <div class="detail-item" v-if="currentDetail.apply_status === '已通过'">
-            <span class="detail-label">审核时间：</span>
-            <span class="detail-value">{{ currentDetail.approve_time || '-' }}</span>
+          <div class="detail-item">
+            <span class="detail-label">用途：</span>
+            <span class="detail-value">{{ currentDetail.purpose || '-' }}</span>
           </div>
-          <div class="detail-item" v-if="currentDetail.apply_status === '已驳回'">
-            <span class="detail-label">驳回时间：</span>
-            <span class="detail-value">{{ currentDetail.reject_time || '-' }}</span>
-          </div>
-          <div class="detail-item" v-if="currentDetail.apply_status === '已驳回' && currentDetail.reject_reason">
+          <div class="detail-item" v-if="currentDetail.applyStatus === '已驳回' && currentDetail.rejectReason">
             <span class="detail-label">驳回原因：</span>
-            <span class="detail-value">{{ currentDetail.reject_reason }}</span>
+            <span class="detail-value">{{ currentDetail.rejectReason }}</span>
           </div>
         </div>
         <div class="modal-footer">
@@ -441,7 +455,8 @@ const userName = ref('');
 const isScrolled = ref(false);
 const sidebarOpen = ref(true);
 const isMobile = ref(false);
-
+// 在响应式状态区域添加
+const statsLoading = ref(false); // 统计卡片加载状态
 // 筛选参数
 const filter = ref({
   page: 1,
@@ -482,15 +497,11 @@ const weekApprovedTrendIcon = computed(() => {
   return 'fa-minus';
 });
 
-
-
 const weekRejectedTrendIcon = computed(() => {
   if (weekRejectedChange.value > 0) return 'fa-arrow-up';
   if (weekRejectedChange.value < 0) return 'fa-arrow-down';
   return 'fa-minus';
 });
-
-
 
 // 分页数据
 const pagination = ref({
@@ -531,8 +542,10 @@ const getAuthHeaders = () => {
   const token = localStorage.getItem('token');
   return token ? { 'Authorization': token } : {};
 };
+
 // 获取统计数据
 const fetchStats = async () => {
+  const statsLoading = ref(true); // 添加加载状态
   try {
     const response = await axios.get('/sec/getClassroomUsageStats', {
       headers: getAuthHeaders()
@@ -540,27 +553,43 @@ const fetchStats = async () => {
     
     if (response.code === 200 && response.data) {
       const stats = response.data;
-      // 直接赋值接口返回的字符串数据（无需转换）
       todayPending.value = stats.todayPending || '0';
       weekApproved.value = stats.thisWeekApproved || '0';
       weekRejected.value = stats.thisWeekRejected || '0';
+
+       // 2. 趋势变化量（用于箭头图标判断）
+       todayPendingChange.value = stats.todayPendingChange || 0;
+      weekApprovedChange.value = stats.weekApprovedChange || 0;
+      weekRejectedChange.value = stats.weekRejectedChange || 0;
       
-      // 处理趋势文本（接口已返回拼接好的文本，直接使用）
-      // 注意：原代码中趋势计算逻辑与接口冲突，应改用接口返回的文本
-      todayPendingTrendText.value = stats.approvedVsYesterday || '无数据';
-      weekApprovedTrendText.value = stats.rejectedVsLastWeek || '无数据';
-      weekRejectedTrendText.value = stats.pendingVsLastWeek || '无数据';
+       // 3. 趋势文本（直接使用后端返回的格式化文本）
+       todayPendingTrendText.value = stats.todayPendingTrendText || '无数据';
+      weekApprovedTrendText.value = stats.weekApprovedTrendText || '无数据';
+      weekRejectedTrendText.value = stats.weekRejectedTrendText || '无数据';
     } else {
       ElMessage.error('获取统计数据失败');
+      resetStats(); // 失败时重置数据
     }
   } catch (error) {
     console.error('统计接口调用失败:', error);
-    ElMessage.error('获取统计数据失败');
-    // 显示更具体的错误提示
-  const errorMsg = error.response?.data?.msg || `服务器错误 (${error.response?.status || '未知'})`;
+    const errorMsg = error.response?.data?.msg || `服务器错误 (${error.response?.status || '未知'})`;
     ElMessage.error(`获取统计数据失败: ${errorMsg}`);
+    resetStats();
+  } 
+   finally {
+    statsLoading.value = false;
   }
-  
+};
+const resetStats = () => {
+  todayPending.value = 0;
+  weekApproved.value = 0;
+  weekRejected.value = 0;
+  todayPendingChange.value = 0;
+  weekApprovedChange.value = 0;
+  weekRejectedChange.value = 0;
+  todayPendingTrendText.value = '加载失败';
+  weekApprovedTrendText.value = '加载失败';
+  weekRejectedTrendText.value = '加载失败';
 };
 // 获取楼栋数据
 const fetchBuildings = async () => {
@@ -652,10 +681,9 @@ const fetchLogs = async () => {
   }
 };
 
-// 查看详情
+// 查看详情 - 确保获取完整数据
 const viewDetails = async (applyId) => {
-  // 增加参数验证
-  console.log('传递的applyId:', applyId);  // 应输出 TEST010
+  console.log('传递的applyId:', applyId);
   if (!applyId) {
     ElMessage.error('申请ID无效');
     return;
@@ -677,23 +705,21 @@ const viewDetails = async (applyId) => {
     });
 
     if ([200, 0].includes(response.code) || response.status === 200) {
+      // 直接使用后端返回的完整数据对象
       currentDetail.value = response.data || {};
-      console.log('详情数据中的驳回原因:', currentDetail.value.rejectreason);
+      console.log('获取到的完整详情数据:', currentDetail.value);
       showDetails.value = true;
     } else {
       ElMessage.error(response.msg || '获取详情失败');
     }
   } catch (error) {
     console.error('获取详情失败:', error);
-    ElMessage.error(`获取详情失败: ${error.response?.data?.msg || error.message}`);
-    
     const errorMsg = error.response?.data?.msg 
       || `服务器错误 (${error.response?.status || '未知状态'})`
       || error.message;
     ElMessage.error(`获取详情失败: ${errorMsg}`);
   }
 };
-
 
 // 关闭详情
 const closeDetails = () => {
@@ -710,7 +736,6 @@ const handleApprove = async (applyId) => {
   }).then(async () => {
     try {
       console.log('通过操作的applyId:', applyId);
-      // 使用后端要求的参数名apply_id和apply_status
       await axios.post('/sec/updateStatus', 
         { 
           apply_id: applyId,
@@ -722,6 +747,7 @@ const handleApprove = async (applyId) => {
       );
       ElMessage.success('操作成功');
       fetchLogs(); // 刷新列表
+      fetchStats(); // 新增：刷新统计卡片
     } catch (error) {
       console.error('审核通过失败:', error);
       ElMessage.error(`操作失败: ${error.response?.data?.msg || error.message}`);
@@ -752,7 +778,6 @@ const confirmReject = async () => {
   }
   
   try {
-    // 使用后端要求的参数名apply_id、apply_status和reject_reason
     await axios.post('/sec/updateStatus', 
       {
         apply_id: currentApplyId.value,
@@ -768,6 +793,7 @@ const confirmReject = async () => {
     currentApplyId.value = '';
     rejectReason.value = '';
     fetchLogs(); // 刷新列表
+    fetchStats(); // 新增：刷新统计卡片
   } catch (error) {
     console.error('驳回失败:', error);
     ElMessage.error(`操作失败: ${error.response?.data?.msg || error.message}`);
@@ -862,9 +888,8 @@ const visiblePages = computed(() => {
 });
 
 // 生命周期
-// 生命周期 - 修复后
 onMounted(() => {
-  // 1. 定义具名函数（事件监听）
+  // 事件监听
   const handleScroll = () => {
     isScrolled.value = window.scrollY > 10;
   };
@@ -873,22 +898,25 @@ onMounted(() => {
     sidebarOpen.value = !isMobile.value;
   };
   
-  // 2. 绑定事件监听
   window.addEventListener('scroll', handleScroll);
   window.addEventListener('resize', handleResize);
   handleResize(); // 初始化窗口状态
   
-  // 3. 关键修复：添加数据获取逻辑（之前漏掉了这部分）
+  // 数据获取
   fetchBuildings().then(() => {
     fetchLogs(); // 获取列表数据
   });
-  fetchStats(); // 获取统计卡片数据（这行是卡片显示的核心）
-  
-  // 4. 清理事件监听
+    // 新增：初始化统计数据并添加定时刷新
+    fetchStats(); // 首次加载
+  const statsTimer = setInterval(() => {
+    fetchStats(); // 每30秒刷新一次
+  }, 30 * 1000); // 30秒 = 30*1000毫秒
+  // 清理事件监听
   onUnmounted(() => {
     window.removeEventListener('scroll', handleScroll);
     window.removeEventListener('resize', handleResize);
     if (searchTimer.value) clearTimeout(searchTimer.value);
+    clearInterval(statsTimer); // 清除定时器
   });
 });
 
@@ -1280,6 +1308,9 @@ watch(route, () => {
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 500;
+  white-space: nowrap; /* 防止文字换行 */
+  min-width: 4em; /* 确保有足够宽度容纳三个字 */
+  display: inline-block; /* 确保宽度设置生效 */
 }
 
 .status-tag.pending {
@@ -1382,7 +1413,7 @@ watch(route, () => {
   margin: 0 0.25rem;
 }
 
-/* 弹窗样式 */
+/* 弹窗样式 - 确保详情弹窗足够高以显示所有字段 */
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -1402,11 +1433,14 @@ watch(route, () => {
   border-radius: 0.5rem;
   width: 100%;
   max-width: 500px;
+  max-height: 90vh; /* 限制最大高度为视口的90% */
+  overflow-y: auto; /* 内容过多时可滚动 */
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 .reject-modal {
   max-width: 400px;
+  max-height: auto;
 }
 
 .modal-header {
@@ -1457,7 +1491,7 @@ watch(route, () => {
   font-weight: 500;
   color: var(--gray-700);
   display: inline-block;
-  width: 80px;
+  width: 100px; /* 增加标签宽度以容纳更长的标签文本 */
 }
 
 .detail-value {

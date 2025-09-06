@@ -487,47 +487,51 @@ export default {
     };
 
     // 查询按钮点击事件
-    const handleQuery = () => {
-      if (!filter.value.dateStart || !filter.value.dateEnd) {
-        ElMessage.warning('请选择开始日期和结束日期');
-        return;
-      }
-      // 确保开始日期不晚于结束日期
-      if (new Date(filter.value.dateStart) > new Date(filter.value.dateEnd)) {
-        ElMessage.warning('开始日期不能晚于结束日期');
-        return;
-      }
-      fetchUsageData();
-    };
+// 查询按钮点击事件
+const handleQuery = () => {
+  if (!filter.value.dateStart || !filter.value.dateEnd) {
+    ElMessage.warning('请选择开始日期和结束日期');
+    return;
+  }
+  if (new Date(filter.value.dateStart) > new Date(filter.value.dateEnd)) {
+    ElMessage.warning('开始日期不能晚于结束日期');
+    return;
+  }
+  // 先更新表格数据，再更新卡片数据（保证筛选条件一致）
+  fetchUsageData().then(() => {
+    fetchClassroomMetrics();  // 新增：筛选后同步更新卡片数据
+  });
+};
 // 获取统计卡片数据
 // 获取统计卡片数据
 const fetchClassroomMetrics = async () => {
   try {
+    // const params = {
+    //   buildingId: filter.value.buildingId || undefined,
+    //   roomType: filter.value.roomType || undefined,
+    //   dateStart: filter.value.dateStart || undefined,
+    //   dateEnd: filter.value.dateEnd || undefined
+      
+    // };
     const params = {
-      buildingId: filter.value.buildingId || undefined,
-      roomType: filter.value.roomType || undefined,
-      dateStart: filter.value.dateStart || undefined,
-      dateEnd: filter.value.dateEnd || undefined
+      building_id: filter.value.buildingId || undefined,  // 原：buildingId → 改为 building_id
+      room_type: filter.value.roomType || undefined,      // 原：roomType → 改为 room_type
+      date_start: filter.value.dateStart || undefined,    // 原：dateStart → 改为 date_start
+      date_end: filter.value.dateEnd || undefined         // 原：dateEnd → 改为 date_end
     };
-    
     const response = await axios.get('/sec/calculateClassroomMetrics', { params });
-    
+    console.log('【卡片数据接口响应】', response);  // 移到response定义之后
     if (response.code === 200 && response.data) {
       const metrics = response.data;
-      // 1. 修正字段名：averageUsageRate（后端）→ 前端直接使用，加“%”显示
-      avgUsageRate.value = metrics.averageUsageRate ? `${metrics.averageUsageRate}%` : '0%';
-      // 2. 修正字段名：mostUsedClassroom（后端）→ 前端直接使用
-      mostUsedClassroom.value = metrics.mostUsedClassroom || '暂无数据';
-      // 3. 修正字段名：mostUsedCount（后端）→ 转数字后赋值
-      mostUsedCount.value = metrics.mostUsedCount ? Number(metrics.mostUsedCount) : 0;
-      // 4. 修正字段名：leastUsedClassroom（后端）→ 前端直接使用
-      leastUsedClassroom.value = metrics.leastUsedClassroom || '暂无数据';
-      // 5. 修正字段名：leastUsedCount（后端）→ 转数字后赋值
-      leastUsedCount.value = metrics.leastUsedCount ? Number(metrics.leastUsedCount) : 0;
-      // 6. 修正趋势数据字段：用 weeklyComparison（后端）代替 changeRate
-      calculateTrend(metrics.weeklyComparison);
+      // 2. 核心修复：用后端返回的小驼峰字段提取数据      
+avgUsageRate.value = metrics.averageUsageRate ? `${metrics.averageUsageRate}%` : '0%';      
+mostUsedClassroom.value = metrics.mostUsedClassroom || '暂无数据';      
+mostUsedCount.value = metrics.mostUsedCount ? Number(metrics.mostUsedCount) : 0;      
+leastUsedClassroom.value = metrics.leastUsedClassroom || '暂无数据';      
+leastUsedCount.value = metrics.leastUsedCount ? Number(metrics.leastUsedCount) : 0;
+      calculateTrend(metrics.weeklyComparison);  // 修正趋势字段
     } else {
-      // 异常处理（保持不变）
+      // 异常处理
       avgUsageRate.value = '0%';
       mostUsedClassroom.value = '暂无数据';
       mostUsedCount.value = 0;
@@ -536,8 +540,13 @@ const fetchClassroomMetrics = async () => {
       trendText.value = '无数据';
     }
   } catch (error) {
-    // 错误处理（保持不变）
-    console.error('获取教室统计数据失败:', error);
+   // 修复：移除对response的引用，从error对象获取错误信息
+   console.error('获取教室统计数据失败:', error);
+    // 如需打印错误响应，应从error对象中获取
+    if (error.response) {
+      console.error('错误响应状态:', error.response.status);
+      console.error('错误响应内容:', error.response.data);
+    }
     ElMessage.error('获取统计数据时发生网络错误');
   }
 };
@@ -687,18 +696,27 @@ const fetchClassroomMetrics = async () => {
     };
 
     // 重置筛选条件
-    const resetFilter = () => {
-      filter.value = {
-        buildingId: '',
-        roomType: '',
-        dateStart: null,
-        dateEnd: null,
-        page: 1,
-        size: 10
-      };
-      pagination.value.page = 1;
-      fetchUsageData();
-    };
+// 重置筛选条件
+const resetFilter = () => {
+  filter.value = {
+    buildingId: '',
+    roomType: '',
+    dateStart: null,
+    dateEnd: null,
+    page: 1,
+    size: 10
+  };
+  pagination.value.page = 1;
+  // 重置表格数据
+  fetchUsageData();
+  // 重置卡片数据为初始状态
+  avgUsageRate.value = '';
+  mostUsedClassroom.value = '';
+  mostUsedCount.value = 0;
+  leastUsedClassroom.value = '';
+  leastUsedCount.value = 0;
+  trendText.value = '';
+};
 
     // 生命周期
     onMounted(() => {
