@@ -62,18 +62,19 @@
               <div class="stat-content">
                 <div>
                   <p class="stat-label">今日待审核</p>
-                  <h3 class="stat-value">{{ statsLoading ? '加载中...' : todayPending }}</h3>                  
-                  <p class="stat-trend">
+                  <h3 class="stat-value">{{ todayPending || '0' }}</h3>
+                  
+                  <!-- <p class="stat-trend">
                       <i class="fa" :class="[
                         todayPendingTrendIcon,
                         {
-                          'text-danger': todayPendingChange.value > 0,
-                          'text-success': todayPendingChange.value < 0,
-                          'text-gray-500': todayPendingChange.value === 0
+                          'text-danger': todayPendingChange > 0,
+                          'text-success': todayPendingChange < 0,
+                          'text-gray-500': todayPendingChange === 0
                         }
                       ]"></i>
                     {{ todayPendingTrendText || '无数据' }}
-                  </p>
+                  </p> -->
                 </div>
                 <div class="stat-icon bg-yellow-50">
                   <i class="fa fa-clock-o text-yellow-500 text-base"></i>
@@ -85,14 +86,15 @@
               <div class="stat-content">
                 <div>
                   <p class="stat-label">本周通过</p>
-                  <h3 class="stat-value">{{ statsLoading ? '加载中...' : weekApproved }}</h3>                  
+                  <h3 class="stat-value">{{ weekApproved || '0' }}</h3>
+                  
                   <p class="stat-trend">
                     <i class="fa" :class="[
                       weekApprovedTrendIcon,
                       {
-                        'text-success': weekApprovedChange.value > 0,
-                        'text-danger': weekApprovedChange.value < 0,
-                        'text-gray-500': weekApprovedChange.value === 0
+                        'text-success': weekApprovedChange > 0,
+                        'text-danger': weekApprovedChange < 0,
+                        'text-gray-500': weekApprovedChange === 0
                       }
                     ]"></i>
                     {{ weekApprovedTrendText || '无数据' }}
@@ -108,14 +110,15 @@
               <div class="stat-content">
                 <div>
                   <p class="stat-label">本周驳回</p>
-                  <h3 class="stat-value">{{ statsLoading ? '加载中...' : weekRejected }}</h3>                  
+                  <h3 class="stat-value">{{ weekRejected || '0' }}</h3>
+                  
                   <p class="stat-trend">
                     <i class="fa" :class="[
                         weekRejectedTrendIcon,
                         {
-                          'text-danger': weekRejectedChange.value > 0,
-                          'text-success': weekRejectedChange.value < 0,
-                          'text-gray-500': weekRejectedChange.value === 0
+                          'text-danger': weekRejectedChange > 0,
+                          'text-success': weekRejectedChange < 0,
+                          'text-gray-500': weekRejectedChange === 0
                         }
                       ]"></i>
                     {{ weekRejectedTrendText || '无数据' }}
@@ -305,11 +308,11 @@
               <template v-for="page in visiblePages" :key="page">
                 <span v-if="page === '...'" class="pagination-ellipsis">...</span>
                 <button 
-    v-else
-    class="pagination-btn" 
-    :class="{ 'active': pagination.page === page }" 
-    @click="changePage(page)"
-  >
+                  v-else
+                  class="pagination-btn" 
+                  :class="{ 'active': pagination.page === page }" 
+                  @click="changePage(page)"
+                >
                   {{ page }}
                 </button>
               </template>
@@ -404,6 +407,19 @@
             <span class="detail-label">用途：</span>
             <span class="detail-value">{{ currentDetail.purpose || '-' }}</span>
           </div>
+          <!-- 处理时间展示 -->      
+          <!-- <div class="detail-item" v-if="currentDetail.applyStatus === '已通过'">        
+            <span class="detail-label">通过时间：</span>        
+            <span class="detail-value">{{ formatDateTime(currentDetail.processingTime) || '-' }}</span>      
+          </div>            
+          <div class="detail-item" v-if="currentDetail.applyStatus === '已驳回'">        
+            <span class="detail-label">驳回时间：</span>        
+            <span class="detail-value">{{ formatDateTime(currentDetail.processingTime) || '-' }}</span>      
+          </div> -->
+          <div class="detail-item" v-if="currentDetail.applyStatus !== '待审核'">        
+  <span class="detail-label">处理时间：</span>        
+  <span class="detail-value">{{ formatDateTime(currentDetail.processingTime) || '-' }}</span>      
+</div>
           <div class="detail-item" v-if="currentDetail.applyStatus === '已驳回' && currentDetail.rejectReason">
             <span class="detail-label">驳回原因：</span>
             <span class="detail-value">{{ currentDetail.rejectReason }}</span>
@@ -455,8 +471,7 @@ const userName = ref('');
 const isScrolled = ref(false);
 const sidebarOpen = ref(true);
 const isMobile = ref(false);
-// 在响应式状态区域添加
-const statsLoading = ref(false); // 统计卡片加载状态
+
 // 筛选参数
 const filter = ref({
   page: 1,
@@ -480,16 +495,17 @@ const todayPendingChange = ref(0);
 const weekApprovedChange = ref(0);
 const weekRejectedChange = ref(0);
 
-// 趋势显示计算属性
+// 趋势文本
+const todayPendingTrendText = ref('无数据');
+const weekApprovedTrendText = ref('无数据');
+const weekRejectedTrendText = ref('无数据');
+
+// 趋势图标计算属性
 const todayPendingTrendIcon = computed(() => {
   if (todayPendingChange.value > 0) return 'fa-arrow-up';
   if (todayPendingChange.value < 0) return 'fa-arrow-down';
   return 'fa-minus';
 });
-
-const todayPendingTrendText = ref('无数据');
-const weekApprovedTrendText = ref('无数据');
-const weekRejectedTrendText = ref('无数据');
 
 const weekApprovedTrendIcon = computed(() => {
   if (weekApprovedChange.value > 0) return 'fa-arrow-up';
@@ -543,54 +559,125 @@ const getAuthHeaders = () => {
   return token ? { 'Authorization': token } : {};
 };
 
+// 格式化日期时间
+const formatDateTime = (dateString) => {
+  if (!dateString) return '';
+  
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }).replace(',', ' ');
+  } catch (error) {
+    console.error('日期格式化失败:', error);
+    return dateString;
+  }
+};
+
+// 获取本周的起始和结束日期（周一至周日）
+const getCurrentWeekRange = () => {
+  const now = new Date();
+  const day = now.getDay() || 7; // 将周日的0转为7
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - day + 1);
+  
+  const sunday = new Date(now);
+  sunday.setDate(now.getDate() - day + 7);
+  
+  return {
+    start: monday.toISOString().split('T')[0],
+    end: sunday.toISOString().split('T')[0]
+  };
+};
+
 // 获取统计数据
 const fetchStats = async () => {
-  const statsLoading = ref(true); // 添加加载状态
   try {
+    // 获取本周范围用于调试显示
+    const weekRange = getCurrentWeekRange();
+    console.log(`当前统计周范围: ${weekRange.start} 至 ${weekRange.end}`);
+    
     const response = await axios.get('/sec/getClassroomUsageStats', {
       headers: getAuthHeaders()
     });
     
     if (response.code === 200 && response.data) {
       const stats = response.data;
-      todayPending.value = stats.todayPending || '0';
-      weekApproved.value = stats.thisWeekApproved || '0';
-      weekRejected.value = stats.thisWeekRejected || '0';
-
-       // 2. 趋势变化量（用于箭头图标判断）
-       todayPendingChange.value = stats.todayPendingChange || 0;
-      weekApprovedChange.value = stats.weekApprovedChange || 0;
-      weekRejectedChange.value = stats.weekRejectedChange || 0;
       
-       // 3. 趋势文本（直接使用后端返回的格式化文本）
-       todayPendingTrendText.value = stats.todayPendingTrendText || '无数据';
-      weekApprovedTrendText.value = stats.weekApprovedTrendText || '无数据';
-      weekRejectedTrendText.value = stats.weekRejectedTrendText || '无数据';
+      // 处理字段名映射（下划线转驼峰）
+      const formattedStats = {
+        todayPending: stats.todayPending || 0,
+        thisWeekApproved: stats.thisWeekApproved || 0,
+        thisWeekRejected: stats.thisWeekRejected || 0,
+        approvedVsYesterday: stats.approvedVsYesterday || '无数据',
+        rejectedVsLastWeek: stats.rejectedVsLastWeek || '无数据',
+        pendingVsLastWeek: stats.pendingVsLastWeek || '无数据'
+      };
+        
+      
+      // 更新统计数值
+      todayPending.value = formattedStats.todayPending;
+      weekApproved.value = formattedStats.thisWeekApproved;
+      weekRejected.value = formattedStats.thisWeekRejected;
+      
+      // 更新趋势文本
+      todayPendingTrendText.value = formattedStats.approvedVsYesterday;
+      weekApprovedTrendText.value = formattedStats.rejectedVsLastWeek;
+      weekRejectedTrendText.value = formattedStats.pendingVsLastWeek;
+      
+      // 解析趋势变化数值
+      parseTrendChanges(
+        formattedStats.approvedVsYesterday,
+        formattedStats.rejectedVsLastWeek,
+        formattedStats.pendingVsLastWeek
+      );
     } else {
       ElMessage.error('获取统计数据失败');
-      resetStats(); // 失败时重置数据
     }
   } catch (error) {
     console.error('统计接口调用失败:', error);
     const errorMsg = error.response?.data?.msg || `服务器错误 (${error.response?.status || '未知'})`;
     ElMessage.error(`获取统计数据失败: ${errorMsg}`);
-    resetStats();
-  } 
-   finally {
-    statsLoading.value = false;
   }
 };
-const resetStats = () => {
-  todayPending.value = 0;
-  weekApproved.value = 0;
-  weekRejected.value = 0;
-  todayPendingChange.value = 0;
-  weekApprovedChange.value = 0;
-  weekRejectedChange.value = 0;
-  todayPendingTrendText.value = '加载失败';
-  weekApprovedTrendText.value = '加载失败';
-  weekRejectedTrendText.value = '加载失败';
+
+// 解析趋势变化数值
+const parseTrendChanges = (todayPendingTrend, weekApprovedTrend, weekRejectedTrend) => {
+  // 解析今日待审核趋势
+  if (todayPendingTrend.includes('增长')) {
+    todayPendingChange.value = parseInt(todayPendingTrend.match(/-?\d+/)[0]) || 0;
+  } else if (todayPendingTrend.includes('减少')) {
+    todayPendingChange.value = -parseInt(todayPendingTrend.match(/\d+/)[0]) || 0;
+  } else {
+    todayPendingChange.value = 0;
+  }
+  
+  // 解析本周通过趋势
+  if (weekApprovedTrend.includes('增长')) {
+    weekApprovedChange.value = parseInt(weekApprovedTrend.match(/-?\d+/)[0]) || 0;
+  } else if (weekApprovedTrend.includes('减少')) {
+    weekApprovedChange.value = -parseInt(weekApprovedTrend.match(/\d+/)[0]) || 0;
+  } else {
+    weekApprovedChange.value = 0;
+  }
+  
+  // 解析本周驳回趋势
+  if (weekRejectedTrend.includes('增长')) {
+    weekRejectedChange.value = parseInt(weekRejectedTrend.match(/-?\d+/)[0]) || 0;
+  } else if (weekRejectedTrend.includes('减少')) {
+    weekRejectedChange.value = -parseInt(weekRejectedTrend.match(/\d+/)[0]) || 0;
+  } else {
+    weekRejectedChange.value = 0;
+  }
 };
+
 // 获取楼栋数据
 const fetchBuildings = async () => {
   try {
@@ -657,13 +744,19 @@ const fetchLogs = async () => {
       
       logsData.value = responseData.records || [];
       
+      // pagination.value = {
+      //   page: responseData.current || filter.value.page,
+      //   size: responseData.size || filter.value.size,
+      //   total: responseData.total || 0,
+      //   pages: responseData.pages || 0
+      // };
+      // 调整分页数据
       pagination.value = {
-        page: responseData.current || filter.value.page,
-        size: responseData.size || filter.value.size,
-        total: responseData.total || 0,
-        pages: responseData.pages || 0
+        page: filter.value.page,
+        size: filter.value.size,
+        total: logsData.value.length,
+        pages: logsData.value.length > 0 ? 1 : 0
       };
-      
       console.log('数据加载成功，记录数:', logsData.value.length, 
                  '总记录数:', pagination.value.total,
                  '当前页:', pagination.value.page,
@@ -747,7 +840,7 @@ const handleApprove = async (applyId) => {
       );
       ElMessage.success('操作成功');
       fetchLogs(); // 刷新列表
-      fetchStats(); // 新增：刷新统计卡片
+      fetchStats(); // 刷新统计数据
     } catch (error) {
       console.error('审核通过失败:', error);
       ElMessage.error(`操作失败: ${error.response?.data?.msg || error.message}`);
@@ -793,7 +886,7 @@ const confirmReject = async () => {
     currentApplyId.value = '';
     rejectReason.value = '';
     fetchLogs(); // 刷新列表
-    fetchStats(); // 新增：刷新统计卡片
+    fetchStats(); // 刷新统计数据
   } catch (error) {
     console.error('驳回失败:', error);
     ElMessage.error(`操作失败: ${error.response?.data?.msg || error.message}`);
@@ -906,33 +999,18 @@ onMounted(() => {
   fetchBuildings().then(() => {
     fetchLogs(); // 获取列表数据
   });
-    // 新增：初始化统计数据并添加定时刷新
-    fetchStats(); // 首次加载
-  const statsTimer = setInterval(() => {
-    fetchStats(); // 每30秒刷新一次
-  }, 30 * 1000); // 30秒 = 30*1000毫秒
+  fetchStats(); // 获取统计卡片数据
+  
+  // 设置定时刷新统计数据（每5分钟）
+  const statsInterval = setInterval(fetchStats, 5 * 60 * 1000);
+  
   // 清理事件监听
   onUnmounted(() => {
     window.removeEventListener('scroll', handleScroll);
     window.removeEventListener('resize', handleResize);
     if (searchTimer.value) clearTimeout(searchTimer.value);
-    clearInterval(statsTimer); // 清除定时器
+    clearInterval(statsInterval);
   });
-});
-
-// 清理事件监听
-onUnmounted(() => {
-  window.removeEventListener('scroll', () => {
-    isScrolled.value = window.scrollY > 10;
-  });
-  window.removeEventListener('resize', () => {
-    isMobile.value = window.innerWidth < 768;
-    sidebarOpen.value = !isMobile.value;
-  });
-  
-  if (searchTimer.value) {
-    clearTimeout(searchTimer.value);
-  }
 });
 
 // 监听路由变化
@@ -1308,9 +1386,9 @@ watch(route, () => {
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 500;
-  white-space: nowrap; /* 防止文字换行 */
-  min-width: 4em; /* 确保有足够宽度容纳三个字 */
-  display: inline-block; /* 确保宽度设置生效 */
+  white-space: nowrap;
+  min-width: 4em;
+  display: inline-block;
 }
 
 .status-tag.pending {
@@ -1413,7 +1491,7 @@ watch(route, () => {
   margin: 0 0.25rem;
 }
 
-/* 弹窗样式 - 确保详情弹窗足够高以显示所有字段 */
+/* 弹窗样式 */
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -1433,8 +1511,8 @@ watch(route, () => {
   border-radius: 0.5rem;
   width: 100%;
   max-width: 500px;
-  max-height: 90vh; /* 限制最大高度为视口的90% */
-  overflow-y: auto; /* 内容过多时可滚动 */
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
@@ -1491,7 +1569,7 @@ watch(route, () => {
   font-weight: 500;
   color: var(--gray-700);
   display: inline-block;
-  width: 100px; /* 增加标签宽度以容纳更长的标签文本 */
+  width: 100px;
 }
 
 .detail-value {

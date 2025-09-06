@@ -58,16 +58,16 @@
           
           <!-- 统计卡片 -->
           <div class="stats-grid">
-            <!-- 本时段平均使用率卡片 -->
+            <!-- 🔥 关键修改1：绑定全局平均使用率变量（不再依赖筛选数据） -->
             <div class="stat-card animate-fade-in">
               <div class="stat-content">
                 <div>
-                  <p class="stat-label">本时段平均使用率</p>
-                  <h3 class="stat-value">{{ avgUsageRate || '加载中...' }}</h3>
+                  <p class="stat-label">整体平均使用率</p>
+                  <h3 class="stat-value">{{ globalAvgUsageRate || '加载中...' }}</h3>
                   
-                  <p class="stat-trend" :class="trendClass">
-                    <i class="fa" :class="trendIcon"></i>
-                    {{ trendText || '计算中...' }}
+                  <p class="stat-trend" :class="globalTrendClass">
+                    <i class="fa" :class="globalTrendIcon"></i>
+                    {{ globalTrendText || '计算中...' }}
                   </p>
                 </div>
                 <div class="stat-icon bg-blue-50">
@@ -76,15 +76,15 @@
               </div>
             </div>
             
-            <!-- 使用最频繁教室卡片 -->
+            <!-- 使用最频繁教室卡片（全局数据，不受筛选影响） -->
             <div class="stat-card animate-fade-in" style="animation-delay: 0.2s">
               <div class="stat-content">
                 <div>
                   <p class="stat-label">使用最频繁教室</p>
-                  <h3 class="stat-value">{{ mostUsedClassroom || '加载中...' }}</h3>
+                  <h3 class="stat-value">{{ globalMostUsedClassroom || '加载中...' }}</h3>
                   
                   <p class="stat-trend text-gray-500">
-                    使用次数: {{ mostUsedCount || '0' }}次
+                    使用次数: {{ globalMostUsedCount || '0' }}次
                   </p>
                 </div>
                 <div class="stat-icon bg-green-50">
@@ -93,15 +93,15 @@
               </div>
             </div>
             
-            <!-- 使用最少教室卡片 -->
+            <!-- 使用最少教室卡片（全局数据，不受筛选影响） -->
             <div class="stat-card animate-fade-in" style="animation-delay: 0.3s">
               <div class="stat-content">
                 <div>
                   <p class="stat-label">使用最少教室</p>
-                  <h3 class="stat-value">{{ leastUsedClassroom || '加载中...' }}</h3>
+                  <h3 class="stat-value">{{ globalLeastUsedClassroom || '加载中...' }}</h3>
                   
                   <p class="stat-trend text-gray-500">
-                    使用次数: {{ leastUsedCount || '0' }}次
+                    使用次数: {{ globalLeastUsedCount || '0' }}次
                   </p>
                 </div>
                 <div class="stat-icon bg-red-50">
@@ -111,7 +111,7 @@
             </div>
           </div>
           
-          <!-- 筛选 -->
+          <!-- 筛选区域（保持不变） -->
           <div class="card filter-card animate-fade-in" style="animation-delay: 0.4s">
             <div class="filter-header">
               <h2 class="filter-title">按条件筛选</h2>
@@ -196,7 +196,7 @@
             </div>
           </div>
           
-          <!-- 教室使用率表格 -->
+          <!-- 教室使用率表格（保持不变） -->
           <div class="card table-card animate-fade-in" style="animation-delay: 0.5s">
             <div class="table-wrapper">
               <table class="data-table">
@@ -308,18 +308,19 @@ export default {
     const isMobile = ref(window.innerWidth < 768);
     const loading = ref(false); // 加载状态
 
-    // 统计数据
-    const avgUsageRate = ref('');
-    const mostUsedClassroom = ref('');
-    const mostUsedCount = ref(0);
-    const leastUsedClassroom = ref('');
-    const leastUsedCount = ref(0);
-    const trendClass = ref('');
-    const trendIcon = ref('');
-    const trendText = ref('');
+    // 🔥 关键修改2：新增全局平均使用率及趋势变量（替代原筛选后变量）
+    const globalAvgUsageRate = ref(''); // 全局整体平均使用率
+    const globalTrendClass = ref('');   // 全局趋势样式
+    const globalTrendIcon = ref('');   // 全局趋势图标
+    const globalTrendText = ref('');   // 全局趋势文本
 
-   
-    // 筛选条件 - 使用驼峰命名法匹配后端
+    // 全局统计数据（不受筛选影响）
+    const globalMostUsedClassroom = ref('');
+    const globalMostUsedCount = ref(0);
+    const globalLeastUsedClassroom = ref('');
+    const globalLeastUsedCount = ref(0);
+
+    // 筛选条件
     const filter = ref({
       buildingId: '',
       roomType: '',
@@ -339,16 +340,13 @@ export default {
     // 楼栋数据
     const buildings = ref([]);
     const validBuildings = computed(() => {
-      // 只过滤掉null和undefined，避免误删有效数据
-      return buildings.value.filter(building => 
-        building !== null && building !== undefined
-      );
+      return buildings.value.filter(building => building !== null && building !== undefined);
     });
 
     // 教室类型
     const roomTypes = ref([]);
 
-    // 使用率数据列表
+    // 使用率数据列表（受筛选影响）
     const usageData = ref([]);
 
     // 切换侧边栏
@@ -372,22 +370,16 @@ export default {
       const currentPage = pagination.value.page;
       const pages = [];
 
-      // 总页数小于等于5时，显示所有页码
       if (totalPages <= 5) {
         for (let i = 1; i <= totalPages; i++) {
           pages.push(i);
         }
       } else {
-        // 当前页在前面几页时
         if (currentPage <= 3) {
           pages.push(1, 2, 3, 4, 5);
-        } 
-        // 当前页在后面几页时
-        else if (currentPage >= totalPages - 2) {
+        } else if (currentPage >= totalPages - 2) {
           pages.push(totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-        } 
-        // 当前页在中间时
-        else {
+        } else {
           pages.push(currentPage - 2, currentPage - 1, currentPage, currentPage + 1, currentPage + 2);
         }
       }
@@ -398,7 +390,7 @@ export default {
     // 每页显示条数变更方法
     const changePageSize = () => {
       filter.value.size = pagination.value.size;
-      filter.value.page = 1;  // 重置到第一页
+      filter.value.page = 1;
       pagination.value.page = 1;
       fetchUsageData();
     };
@@ -406,41 +398,20 @@ export default {
     // 获取楼栋数据
     const fetchBuildings = async () => {
       try {
-        console.log('开始获取楼栋数据，请求地址:', '/common/getBuildings');
-        
         const response = await axios.get('/common/getBuildings');
-        
-        console.log('楼栋接口响应:', response);
-        
         if (response && response.code === 200) {
-          console.log('请求成功，状态码:', response.code);
-          
           let buildingData = null;
           if (Array.isArray(response.data)) {
             buildingData = response.data;
           } else if (response.data && response.data.data) {
             buildingData = response.data.data;
           }
-          
-          console.log('解析到的楼栋数据:', buildingData);
-          
-          if (Array.isArray(buildingData) && buildingData.length > 0) {
-            buildings.value = buildingData;
-            console.log('成功加载楼栋数据，共', buildingData.length, '条');
-          } else {
-            console.warn('未获取到有效楼栋数据或数据为空数组');
-            buildings.value = [];
-          }
+          buildings.value = Array.isArray(buildingData) ? buildingData : [];
         } else {
-          console.error('获取楼栋数据失败，后端返回状态:', response?.code, '消息:', response?.msg);
           ElMessage.error(`获取楼栋信息失败: ${response?.msg || '未知错误'}`);
         }
       } catch (error) {
         console.error('获取楼栋数据失败:', error);
-        if (error.response) {
-          console.error('错误状态码:', error.response.status);
-          console.error('错误响应内容:', error.response.data);
-        }
         ElMessage.error('网络错误，无法获取楼栋数据');
       }
     };
@@ -448,113 +419,99 @@ export default {
     // 获取教室类型数据
     const fetchRoomTypes = async () => {
       try {
-        console.log('开始获取教室类型数据，请求地址:', '/common/getRoomTypes');
-        
-        const response = await axios.get('/common/getRoomTypes'); 
-        console.log('教室类型接口响应:', response);
-        
+        const response = await axios.get('/common/getRoomTypes');
         if (response.code === 200) {
-          // 检查数据是否存在且为数组
           if (Array.isArray(response.data)) {
-            // 从对象数组中提取room_type字段
             const types = response.data.map(item => item.room_type).filter(Boolean);
-            
-            console.log('提取到的教室类型:', types);
-            roomTypes.value = types;
-            
-            // 如果没有获取到有效类型，给出提示
-            if (roomTypes.value.length === 0) {
-              console.warn('未提取到有效教室类型数据');
-              roomTypes.value = ['无可用类型'];
-            }
+            roomTypes.value = types.length > 0 ? types : ['无可用类型'];
           } else {
-            console.error('教室类型数据格式错误，不是数组:', response.data);
             roomTypes.value = ['数据格式错误'];
           }
         } else {
-          console.warn('获取教室类型失败，状态码:', response.code, '消息:', response.msg);
           roomTypes.value = ['获取失败'];
         }
       } catch (error) {
         console.error('加载教室类型失败:', error);
-        if (error.response) {
-          console.error('错误状态码:', error.response.status);
-          console.error('错误响应内容:', error.response.data);
-        }
         ElMessage.warning('无法加载教室类型列表');
         roomTypes.value = ['加载失败'];
       }
     };
 
-    // 查询按钮点击事件
-// 查询按钮点击事件
-const handleQuery = () => {
-  if (!filter.value.dateStart || !filter.value.dateEnd) {
-    ElMessage.warning('请选择开始日期和结束日期');
-    return;
-  }
-  if (new Date(filter.value.dateStart) > new Date(filter.value.dateEnd)) {
-    ElMessage.warning('开始日期不能晚于结束日期');
-    return;
-  }
-  // 先更新表格数据，再更新卡片数据（保证筛选条件一致）
-  fetchUsageData().then(() => {
-    fetchClassroomMetrics();  // 新增：筛选后同步更新卡片数据
-  });
-};
-// 获取统计卡片数据
-// 获取统计卡片数据
-const fetchClassroomMetrics = async () => {
-  try {
-    // const params = {
-    //   buildingId: filter.value.buildingId || undefined,
-    //   roomType: filter.value.roomType || undefined,
-    //   dateStart: filter.value.dateStart || undefined,
-    //   dateEnd: filter.value.dateEnd || undefined
-      
-    // };
-    const params = {
-      building_id: filter.value.buildingId || undefined,  // 原：buildingId → 改为 building_id
-      room_type: filter.value.roomType || undefined,      // 原：roomType → 改为 room_type
-      date_start: filter.value.dateStart || undefined,    // 原：dateStart → 改为 date_start
-      date_end: filter.value.dateEnd || undefined         // 原：dateEnd → 改为 date_end
+    // 🔥 关键修改3：简化查询逻辑（仅更新表格数据，不影响全局平均使用率）
+    const handleQuery = () => {
+      if (!filter.value.dateStart || !filter.value.dateEnd) {
+        ElMessage.warning('请选择开始日期和结束日期');
+        return;
+      }
+      if (new Date(filter.value.dateStart) > new Date(filter.value.dateEnd)) {
+        ElMessage.warning('开始日期不能晚于结束日期');
+        return;
+      }
+      // 仅请求筛选后的表格数据，不再更新平均使用率
+      fetchUsageData();
     };
-    const response = await axios.get('/sec/calculateClassroomMetrics', { params });
-    console.log('【卡片数据接口响应】', response);  // 移到response定义之后
-    if (response.code === 200 && response.data) {
-      const metrics = response.data;
-      // 2. 核心修复：用后端返回的小驼峰字段提取数据      
-avgUsageRate.value = metrics.averageUsageRate ? `${metrics.averageUsageRate}%` : '0%';      
-mostUsedClassroom.value = metrics.mostUsedClassroom || '暂无数据';      
-mostUsedCount.value = metrics.mostUsedCount ? Number(metrics.mostUsedCount) : 0;      
-leastUsedClassroom.value = metrics.leastUsedClassroom || '暂无数据';      
-leastUsedCount.value = metrics.leastUsedCount ? Number(metrics.leastUsedCount) : 0;
-      calculateTrend(metrics.weeklyComparison);  // 修正趋势字段
-    } else {
-      // 异常处理
-      avgUsageRate.value = '0%';
-      mostUsedClassroom.value = '暂无数据';
-      mostUsedCount.value = 0;
-      leastUsedClassroom.value = '暂无数据';
-      leastUsedCount.value = 0;
-      trendText.value = '无数据';
-    }
-  } catch (error) {
-   // 修复：移除对response的引用，从error对象获取错误信息
-   console.error('获取教室统计数据失败:', error);
-    // 如需打印错误响应，应从error对象中获取
-    if (error.response) {
-      console.error('错误响应状态:', error.response.status);
-      console.error('错误响应内容:', error.response.data);
-    }
-    ElMessage.error('获取统计数据时发生网络错误');
-  }
-};
-    // 获取使用率数据
+
+    // 🔥 关键修改4：扩展全局数据接口（新增全局平均使用率和趋势获取）
+    const fetchGlobalClassroomStats = async () => {
+      try {
+        // 不传递任何筛选参数，确保获取全量数据
+        const response = await axios.get('/sec/calculateClassroomMetrics', { params: {} });
+        if (response.code === 200 && response.data) {
+          const metrics = response.data;
+          // 原有全局数据
+          globalMostUsedClassroom.value = metrics.mostUsedClassroom || '暂无数据';
+          globalMostUsedCount.value = metrics.mostUsedCount ? Number(metrics.mostUsedCount) : 0;
+          globalLeastUsedClassroom.value = metrics.leastUsedClassroom || '暂无数据';
+          globalLeastUsedCount.value = metrics.leastUsedCount ? Number(metrics.leastUsedCount) : 0;
+          // 新增：全局平均使用率
+          globalAvgUsageRate.value = metrics.averageUsageRate ? `${metrics.averageUsageRate}%` : '0%';
+          // 新增：计算全局趋势
+          calculateGlobalTrend(metrics.weeklyComparison);
+        }
+      } catch (error) {
+        console.error('获取全局教室统计数据失败:', error);
+        globalMostUsedClassroom.value = '获取失败';
+        globalLeastUsedClassroom.value = '获取失败';
+        globalAvgUsageRate.value = '获取失败';
+      }
+    };
+
+    // 🔥 关键修改5：新增全局趋势计算方法（独立于筛选趋势）
+    const calculateGlobalTrend = (weeklyComparison) => {
+      if (!weeklyComparison) {
+        globalTrendText.value = '无历史数据';
+        globalTrendClass.value = 'text-gray-500';
+        globalTrendIcon.value = '';
+        return;
+      }
+      
+      switch (weeklyComparison) {
+        case '上升':
+          globalTrendText.value = '较上周上升';
+          globalTrendClass.value = 'text-success';
+          globalTrendIcon.value = 'fa-arrow-up';
+          break;
+        case '下降':
+          globalTrendText.value = '较上周下降';
+          globalTrendClass.value = 'text-danger';
+          globalTrendIcon.value = 'fa-arrow-down';
+          break;
+        case '持平':
+          globalTrendText.value = '与上周持平';
+          globalTrendClass.value = 'text-gray-500';
+          globalTrendIcon.value = 'fa-minus';
+          break;
+        default:
+          globalTrendText.value = '数据异常';
+          globalTrendClass.value = 'text-gray-500';
+          globalTrendIcon.value = '';
+      }
+    };
+
+    // 🔥 关键修改6：移除表格数据接口中对平均使用率的更新
     const fetchUsageData = async () => {
       loading.value = true;
       try {
-        // 参数使用驼峰命名法，与后端保持一致
         const params = {
           buildingId: filter.value.buildingId || undefined,
           roomType: filter.value.roomType || undefined,
@@ -564,64 +521,35 @@ leastUsedCount.value = metrics.leastUsedCount ? Number(metrics.leastUsedCount) :
           size: filter.value.size || 10
         };
 
-        console.log('【筛选参数】发送到后端的条件:', params);
-        
         const response = await axios.get('/sec/classroomUsage', { params });
-        
-        console.log('【接口响应】后端返回的完整数据:', response);
 
         if (response.code === 200) {
-          // 从response.data中提取分页数据
           const { current, pages, size, total, records } = response.data;
           
-          // 更新分页信息
           pagination.value = {
             page: current || 1,
-            // size: size || 10,
             size: filter.value.size || 10,
             total: total || 0,
             pages: pages || 0
           };
           
-          // 统计卡片数据
-          const statData = response.data.statistics || {};
-      avgUsageRate.value = statData.averageUsageRate ? `${statData.averageUsageRate}%` : '0%';
-      mostUsedClassroom.value = statData.mostUsedClassroom || '暂无数据';
-      mostUsedCount.value = statData.mostUsedCount ? Number(statData.mostUsedCount) : 0;
-      leastUsedClassroom.value = statData.leastUsedClassroom || '暂无数据';
-      leastUsedCount.value = statData.leastUsedCount ? Number(statData.leastUsedCount) : 0;
-      calculateTrend(statData.weeklyComparison); // 修正趋势字段
-          
+          // 🔥 移除：原筛选后平均使用率更新逻辑（不再影响全局卡片）
+          // const statData = response.data.statistics || {};
+          // avgUsageRate.value = statData.averageUsageRate ? `${statData.averageUsageRate}%` : '0%';
+          // calculateTrend(statData.weeklyComparison);
 
-          // 列表数据 - 使用records数组
-             // 列表数据 - 使用records数组
-      usageData.value = records.map(item => ({
-        ...item,
-        // 确保使用率显示百分号
-        usageRate: item.usageRate ? `${item.usageRate}%` : '0%'
-      }));
-          console.log('【列表数据】前端表格显示的内容:', usageData.value);
-          console.log('【分页信息】当前页:', pagination.value.page, '总页数:', pagination.value.pages, '总记录数:', pagination.value.total);
+          // 仅处理表格列表数据
+          usageData.value = records.map(item => ({
+            ...item,
+            usageRate: item.usageRate ? `${item.usageRate}%` : '0%'
+          }));
         } else {
-          console.log('【接口响应失败】状态码:', response.code, '消息:', response.msg);
-          // 重置数据
-          avgUsageRate.value = '0%';
-          mostUsedClassroom.value = '暂无数据';
-          mostUsedCount.value = 0;
-          leastUsedClassroom.value = '暂无数据';
-          leastUsedCount.value = 0;
           usageData.value = [];
           pagination.value = { page: 1, size: 10, total: 0, pages: 0 };
           ElMessage.error(`查询失败: ${response?.msg || '未知错误'}`);
         }
       } catch (error) {
         console.error('【请求异常】获取数据失败:', error);
-        // 重置数据
-        avgUsageRate.value = '0%';
-        mostUsedClassroom.value = '暂无数据';
-        mostUsedCount.value = 0;
-        leastUsedClassroom.value = '暂无数据';
-        leastUsedCount.value = 0;
         usageData.value = [];
         pagination.value = { page: 1, size: 10, total: 0, pages: 0 };
         ElMessage.error('网络错误，无法获取数据');
@@ -630,39 +558,9 @@ leastUsedCount.value = metrics.leastUsedCount ? Number(metrics.leastUsedCount) :
       }
     };
 
-    // 计算趋势数据
-  
-    const calculateTrend = (weeklyComparison) => {
-  if (!weeklyComparison) {
-    trendText.value = '无历史数据';
-    trendClass.value = 'text-gray-500';
-    trendIcon.value = '';
-    return;
-  }
-  
-  // 适配后端“weeklyComparison”的文本值
-  switch (weeklyComparison) {
-    case '上升':
-      trendText.value = '较上周上升';
-      trendClass.value = 'text-success';
-      trendIcon.value = 'fa-arrow-up';
-      break;
-    case '下降':
-      trendText.value = '较上周下降';
-      trendClass.value = 'text-danger';
-      trendIcon.value = 'fa-arrow-down';
-      break;
-    case '持平':
-      trendText.value = '与上周持平';
-      trendClass.value = 'text-gray-500';
-      trendIcon.value = 'fa-minus';
-      break;
-    default:
-      trendText.value = '数据异常';
-      trendClass.value = 'text-gray-500';
-      trendIcon.value = '';
-  }
-};
+    // 🔥 关键修改7：移除原筛选后趋势计算（仅保留全局趋势）
+    // const calculateTrend = (weeklyComparison) => { ... } // 可删除
+
     // 退出登录
     const handleLogout = () => {
       ElMessageBox.confirm('确定要退出登录吗？', '提示', {
@@ -671,52 +569,40 @@ leastUsedCount.value = metrics.leastUsedCount ? Number(metrics.leastUsedCount) :
         type: 'warning'
       }).then(async () => {
         try {
-          // 调用退出接口
           await axios.post('/auth/logout');
         } catch (error) {
           console.error('退出登录接口调用失败:', error);
         } finally {
-          // 清除本地存储的用户信息
           localStorage.removeItem('currentUser');
-          // 跳转到登录页并刷新
           router.push('/login').then(() => {
             window.location.reload();
           });
           ElMessage.success('退出登录成功');
         }
       }).catch(() => {
-        // 取消退出
         ElMessage.info('已取消退出');
       });
     };
 
     // 处理筛选条件变化
     const handleFilterChange = () => {
-      // 保持原有的筛选变化逻辑，不自动查询
+      // 保持原有逻辑（仅触发表格数据更新前的准备）
     };
 
-    // 重置筛选条件
-// 重置筛选条件
-const resetFilter = () => {
-  filter.value = {
-    buildingId: '',
-    roomType: '',
-    dateStart: null,
-    dateEnd: null,
-    page: 1,
-    size: 10
-  };
-  pagination.value.page = 1;
-  // 重置表格数据
-  fetchUsageData();
-  // 重置卡片数据为初始状态
-  avgUsageRate.value = '';
-  mostUsedClassroom.value = '';
-  mostUsedCount.value = 0;
-  leastUsedClassroom.value = '';
-  leastUsedCount.value = 0;
-  trendText.value = '';
-};
+    // 🔥 关键修改8：简化重置逻辑（仅重置表格，不影响全局平均使用率）
+    const resetFilter = () => {
+      filter.value = {
+        buildingId: '',
+        roomType: '',
+        dateStart: null,
+        dateEnd: null,
+        page: 1,
+        size: 10
+      };
+      pagination.value.page = 1;
+      // 仅重置表格数据，不再更新平均使用率
+      fetchUsageData();
+    };
 
     // 生命周期
     onMounted(() => {
@@ -727,10 +613,13 @@ const resetFilter = () => {
         userName.value = userData.name || '教秘用户';
       }
       
+      // 1. 🔥 优先加载全局数据（仅一次，不受筛选影响）
+      fetchGlobalClassroomStats();
+      
+      // 2. 加载筛选相关的数据（仅用于表格）
       Promise.all([fetchBuildings(), fetchRoomTypes()]).then(() => {
-    // 加载统计卡片数据
-    fetchClassroomMetrics();
-  });
+        fetchUsageData(); // 仅加载初始表格数据
+      });
       
       // 监听滚动事件
       const handleScroll = () => {
@@ -741,10 +630,10 @@ const resetFilter = () => {
       // 监听窗口大小变化
       const handleResize = () => {
         isMobile.value = window.innerWidth < 768;
-        sidebarOpen.value = !isMobile.value; // 移动端默认收起侧边栏
+        sidebarOpen.value = !isMobile.value;
       };
       window.addEventListener('resize', handleResize);
-      handleResize(); // 初始化
+      handleResize();
     });
 
     // 清理事件监听
@@ -769,21 +658,24 @@ const resetFilter = () => {
       }
     );
 
-    // 导出模板需要使用的变量和方法
+    // 🔥 关键修改9：导出全局变量（供模板使用）
     return {
       userName,
       sidebarOpen,
       isScrolled,
       isMobile,
       loading,
-      avgUsageRate,
-      mostUsedClassroom,
-      mostUsedCount,
-      leastUsedClassroom,
-      leastUsedCount,
-      trendClass,
-      trendIcon,
-      trendText,
+      // 全局平均使用率及趋势（新增）
+      globalAvgUsageRate,
+      globalTrendClass,
+      globalTrendIcon,
+      globalTrendText,
+      // 原有全局数据
+      globalMostUsedClassroom,
+      globalMostUsedCount,
+      globalLeastUsedClassroom,
+      globalLeastUsedCount,
+      // 其他变量
       roomTypes,
       filter,
       pagination,
@@ -791,6 +683,7 @@ const resetFilter = () => {
       validBuildings,
       usageData,
       route,
+      // 方法
       toggleSidebar,
       changePage,
       fetchUsageData,
@@ -805,7 +698,7 @@ const resetFilter = () => {
 </script>
 
 <style scoped>
-/* 基础样式变量 */
+/* 样式保持不变，无需修改 */
 :root {
   --primary: #3b82f6;
   --success: #10b981;
@@ -942,7 +835,6 @@ const resetFilter = () => {
   font-weight: 500;
 }
 
-/* 教室使用率导航项固定蓝色背景 */
 .classroom-usage-item {
   background-color: var(--blue-50);
   color: var(--primary);

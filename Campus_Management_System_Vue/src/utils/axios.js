@@ -5,7 +5,7 @@ import { getToken } from './auth'; // 引入统一的 token 获取工具
 
 // 创建 axios 实例，明确后端端口
 const service = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
   timeout: 5000 // 请求超时时间
 });
 
