@@ -1,27 +1,39 @@
 // src/utils/auth.js
-const TOKEN_KEY = 'token';
-const USER_INFO_KEY = 'userInfo';
+const TOKEN_KEY = "token";
+const USER_INFO_KEY = "userInfo";
 
 /**
  * 设置Token
  * @param {string} token - 要存储的Token
  * @param {boolean} remember - 是否持久化存储（true: localStorage, false: sessionStorage）
  */
-export function setToken(token, remember = false) {
-  if (remember) {
-    localStorage.setItem(TOKEN_KEY, token);
-  } else {
-    sessionStorage.setItem(TOKEN_KEY, token);
-  }
-}
 
 /**
  * 获取Token
  * @returns {string|null} Token值或null
  */
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
-}
+// src/utils/auth.js 示例代码
+export const setToken = (token, rememberMe) => {
+  if (rememberMe) {
+    // 勾选"记住我"，存到localStorage（持久化）
+    localStorage.setItem("auth_token", token);
+    // 同时存储rememberMe状态，供getToken判断
+    localStorage.setItem("remember_me", "true");
+  } else {
+    // 不勾选，存到sessionStorage（会话级，关闭标签页失效）
+    sessionStorage.setItem("auth_token", token);
+    sessionStorage.setItem("remember_me", "false");
+  }
+};
+
+export const getToken = () => {
+  // 先判断登录时的rememberMe状态，决定从哪里读取token
+  const rememberMe =
+    localStorage.getItem("remember_me") === "true" ||
+    sessionStorage.getItem("remember_me") === "true";
+
+  return rememberMe ? localStorage.getItem("auth_token") : sessionStorage.getItem("auth_token");
+};
 
 /**
  * 设置用户信息

@@ -11,7 +11,7 @@ const router = createRouter({
   routes: [
     {
       path: "/user",
-      //component: () => import('@/components/Userpass.vue'),
+      component: () => import("@/components/Userpass.vue"),
       children: [
         // 用户路由
         { path: "users", component: () => import("@/views/user/Users.vue") },

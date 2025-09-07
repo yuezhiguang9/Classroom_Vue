@@ -1,13 +1,11 @@
 <template>
-  <Userpass>
-    <router-view />
-  </Userpass>
-</template> 
+  <router-view />
+</template>
 <script setup>
-import Userpass from './components/Userpass.vue';
+  import Userpass from "./components/Userpass.vue";
 </script>
 
- <!-- <template>
+<!-- <template>
   <Managements>
     <router-view />
   </Managements>
@@ -15,4 +13,3 @@ import Userpass from './components/Userpass.vue';
 <script setup>
 import Managements from './components/Managements.vue';
 </script> -->
-
