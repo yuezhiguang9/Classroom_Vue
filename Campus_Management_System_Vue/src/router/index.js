@@ -5,6 +5,10 @@ import SecretaryListLogs from "../views/Secretary/SecretaryListLogs.vue";
 import ClassroomUsage from "../views/Secretary/ClassroomUsage.vue";
 import { ElMessage } from "element-plus";
 import { getToken, getUserInfo } from "@/utils/auth.js";
+import AdminUser from '../views/admin/AdminUser.vue';
+import AdminLog from '../views/admin/AdminLog.vue';
+import AdminAnalyze from '../views/admin/AdminAnalyze.vue';
+import { isLoggedIn } from '@/utils/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -30,13 +34,37 @@ const router = createRouter({
       ],
     },
     {
-      path: "/auth/login",
-      name: "Login",
-      component: Login,
+      path: "/user",
+      component: () => import("@/components/Userpass.vue"),
+      children: [
+        // 用户路由
+        { path: "users", component: () => import("@/views/user/Users.vue") },
+        { path: "select", component: () => import("@/views/user/UserSelect.vue") },
+        { path: "apply", component: () => import("@/views/user/UserApply.vue") },
+      ],
     },
     {
-      path: "/",
-      redirect: "/auth/login",
+      path: "/mgr",
+      //component: () => import('@/components/Managements.vue'),
+      children: [
+        //教室管理员路由
+        { path: "man", component: () => import("@/views/management/Man.vue") },
+        { path: "state", component: () => import("@/views/management/State.vue") },
+        { path: "audit", component: () => import("@/views/management/Audit.vue") },
+      ],
+    },
+    {
+      path: '/',
+      redirect: '/login'
+    },
+    {
+      path: "/sec/listLogs",
+      name: "SecretaryListLogs",
+      component: SecretaryListLogs,
+      meta: {
+        requiresAuth: true,
+        user_type: "teach_sec",
+      },
     },
     {
       path: "/sec/listLogs",
@@ -63,6 +91,16 @@ const router = createRouter({
     {
       path: "/:pathMatch(.*)*",
       redirect: "/auth/login",
+    },
+    {
+      path: '/admin',
+      component: () => import('@/components/Container.vue'),
+      children: [
+        // 超级管理员路由
+        { path: 'users', component: () => import('@/views/admin/AdminUser.vue')},
+        { path: 'log', component: () => import('@/views/admin/AdminLog.vue')},
+        { path: 'analyze', component: () => import('@/views/admin/AdminAnalyze.vue')},
+      ]
     },
 
     // 登录路由
@@ -95,5 +133,5 @@ router.beforeEach((to, from, next) => {
 
   next();
 });
-
+  
 export default router;

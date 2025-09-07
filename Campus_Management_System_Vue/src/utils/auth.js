@@ -1,16 +1,25 @@
-// src/utils/auth.js
+/**
+ * 认证工具模块
+ * 统一管理用户token的存储、获取和清除
+ */
+
+const TOKEN_KEY = 'jwtToken';
 const TOKEN_KEY = "token";
 const USER_INFO_KEY = "userInfo";
 
 /**
- * 设置Token
- * @param {string} token - 要存储的Token
- * @param {boolean} remember - 是否持久化存储（true: localStorage, false: sessionStorage）
+ * 设置token到localStorage或sessionStorage
+ * @param {string} token - JWT token
+ * @param {boolean} remember - 是否记住（true使用localStorage，false使用sessionStorage）
  */
+export function setToken(token, remember = false) {
+  const storage = remember ? localStorage : sessionStorage;
+  storage.setItem(TOKEN_KEY, token);
+}
 
 /**
- * 获取Token
- * @returns {string|null} Token值或null
+ * 获取token
+ * @returns {string|null} - 返回token或null
  */
 // src/utils/auth.js 示例代码
 export const setToken = (token, rememberMe) => {

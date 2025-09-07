@@ -40,8 +40,8 @@
                       clearable
                       :disabled="data.selectedRole === 'class_mgr'"
                     >
-                        <el-option v-for="item in data.collegeData" :key="item.id" 
-                                  :label="item.name" :value="item.id"></el-option>
+                        <el-option v-for="item in data.collegeData" :key="item.collegeId" 
+                                  :label="item.collegeName" :value="item.collegeId"></el-option>
                     </el-select>
                 </el-form-item>
                 
@@ -165,7 +165,7 @@
                   v-if="data.form.user_type === 'teach_sec' || data.form.user_type === 'user'"
                 >
                     <el-select v-model="data.form.college_id" placeholder="请选择学院" style="width: 100%">
-                        <el-option v-for="item in data.collegeData" :key="item.id" :label="item.name" :value="item.id">
+                        <el-option v-for="item in data.collegeData" :key="item.collegeId" :label="item.collegeName" :value="item.collegeId">
                         </el-option>
                     </el-select>
                 </el-form-item>
@@ -177,7 +177,7 @@
                   v-if="data.form.user_type === 'class_mgr'"
                 >
                     <el-select v-model="data.form.building_id" placeholder="请选择楼栋" style="width: 100%">
-                        <el-option v-for="item in data.buildingData" :key="item.id" :label="item.name" :value="item.id">
+                        <el-option v-for="item in data.buildingData" :key="item.buildingId" :label="item.buildingName" :value="item.buildingId">
                         </el-option>
                     </el-select>
                 </el-form-item>
@@ -240,7 +240,10 @@ const data = reactive({
   
   // 用户管理数据
   formVisible: false,
-  form: {},
+  form: {
+    college_id: '',
+    building_id: ''
+  },
   isEdit: false, // 新增此行：区分新增/编辑模式的标志
   tableData: [],
   page: 1,
@@ -248,22 +251,8 @@ const data = reactive({
   total: 0,
   selectedRole: null,
   collegeData: [
-    { id: 'col001', name: '人工智能学院' },
-    { id: 'col002', name: '电子与物理学院' },
-    { id: 'col003', name: '外国语学院' },
-    { id: 'col004', name: '国际教育学院' },
-    { id: 'col005', name: '文学院' },
-    { id: 'col006', name: '政治与管理学院' },
-    { id: 'col007', name: '民族与社会学学院' },
   ],
   buildingData: [
-    { id: 'b001', name: '学友楼' },
-    { id: 'b002', name: '校友楼' },
-    { id: 'b003', name: '国教楼' },
-    { id: 'b004', name: '文综楼' },
-    { id: 'b005', name: '逸夫楼' },
-    { id: 'b006', name: '创新楼' },
-    { id: 'b007', name: '科技楼' },
   ]
 });
 
@@ -305,6 +294,60 @@ const rules = {
       trigger: 'change' 
     }
   ]
+};
+// 获取学院列表
+const getColleges = async () => {
+  try {
+    console.log('开始请求学院列表...');
+    const res = await request.get('/common/getColleges');
+    console.log('学院列表请求响应:', res);
+    if (res && res.code === 200) {
+      if (res.data && Array.isArray(res.data)) {
+        data.collegeData = res.data;
+        console.log('学院列表数据更新成功:', data.collegeData);
+      } else {
+        console.error('学院数据格式不正确，应为数组:', res.data);
+        ElMessage.error('获取学院列表数据格式错误');
+      }
+    } else {
+      console.error('获取学院列表失败，状态码:', res?.code);
+      ElMessage.error(`获取学院列表失败: ${res?.message || '未知错误'}`);
+    }
+  } catch (e) {
+    console.error('获取学院列表异常:', e);
+    ElMessage.error(`网络错误，获取学院列表失败: ${e.message}`);
+  }
+};
+
+// 获取楼栋列表
+const getBuildings = async () => {
+  try {
+    console.log('开始请求楼栋列表...');
+    const res = await request.get('/common/getBuildings');
+    console.log('楼栋列表请求响应:', res);
+    if (res && res.code === 200) {
+      if (res.data && Array.isArray(res.data)) {
+        data.buildingData = res.data;
+        console.log('楼栋列表数据更新成功:', data.buildingData);
+      } else {
+        console.error('楼栋数据格式不正确，应为数组:', res.data);
+        ElMessage.error('获取楼栋列表数据格式错误');
+      }
+    } else {
+      console.error('获取楼栋列表失败，状态码:', res?.code);
+      ElMessage.error(`获取楼栋列表失败: ${res?.message || '未知错误'}`);
+    }
+  } catch (e) {
+    console.error('获取楼栋列表异常:', e);
+    ElMessage.error(`网络错误，获取楼栋列表失败: ${e.message}`);
+  }
+};
+
+// 监听学院选择变化，过滤对应的楼栋（如果需要）
+const handleCollegeChange = (collegeId) => {
+  // 如果需要根据学院过滤楼栋，可以在这里实现
+  // 目前保持简单实现
+  console.log('学院选择已变更:', collegeId);
 };
 
 // 删除用户
@@ -357,7 +400,7 @@ const save = async () => {
       password: data.form.password,
       phone: data.form.phone,
       user_type: data.form.user_type,
-      college_id: data.form.college,
+      college_id: data.form.college_id,
       building_id: data.form.building_id,
 };
 // 新增时必传密码，编辑时仅在输入新密码时传递
@@ -490,7 +533,7 @@ const handleEdit = (row) => {
     name: row.name, // 姓名
     phone: row.phone, // 手机号
     user_type: row.user_type, 
-    college_id: row.college, // 学院
+    college_id: row.college_id, // 学院
     building_id: row.building_id, // 楼栋
     password: row.password 
   };
@@ -529,10 +572,13 @@ const changePage = (newPage) => {
 const formRef = ref(null);
 
 // 生命周期钩子：挂载后
-onMounted(() => {
+onMounted(async () => {
+  
   // 默认加载用户类型为用户(user)
   data.selectedRole = 'user';
-  load();
+  
+  // 并行获取学院数据、楼栋数据和加载用户列表
+  await Promise.all([getColleges(), getBuildings(), load()]);
 });
 </script>
 
