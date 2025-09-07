@@ -10,6 +10,26 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: "/user",
+      //component: () => import('@/components/Userpass.vue'),
+      children: [
+        // 用户路由
+        { path: "users", component: () => import("@/views/user/Users.vue") },
+        { path: "select", component: () => import("@/views/user/UserSelect.vue") },
+        { path: "apply", component: () => import("@/views/user/UserApply.vue") },
+      ],
+    },
+    {
+      path: "/mgr",
+      //component: () => import('@/components/Managements.vue'),
+      children: [
+        //教室管理员路由
+        { path: "man", component: () => import("@/views/management/Man.vue") },
+        { path: "state", component: () => import("@/views/management/State.vue") },
+        { path: "audit", component: () => import("@/views/management/Audit.vue") },
+      ],
+    },
+    {
       path: "/auth/login",
       name: "Login",
       component: Login,
@@ -44,9 +64,11 @@ const router = createRouter({
       path: "/:pathMatch(.*)*",
       redirect: "/auth/login",
     },
+
+    // 登录路由
+    // { path: '/login', component: () => import('@/views/Login.vue')},
   ],
 });
-
 // 路由守卫
 router.beforeEach((to, from, next) => {
   // 1. 验证是否需要登录
