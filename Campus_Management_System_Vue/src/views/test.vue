@@ -15,7 +15,7 @@
     try {
       // 注意：如果axios实例配置了baseURL，这里应该用相对路径
       // 例如baseURL是'/api'，则请求地址应为'/getId'（配合代理转发）
-      const response = await request.get("http://localhost:8080/getId");
+      const response = await request.get("http://localhost:8081/getId");
       console.log("方式一返回数据：", response.data);
       ElMessage.success("方式一：请求成功");
     } catch (error) {
@@ -34,7 +34,7 @@
       const headers = token ? { Authorization: `${token}` } : {};
 
       // 3. 发送请求（需导入原始axios）
-      const response = await axios.get("http://localhost:8080/getId", {
+      const response = await axios.get("http://localhost:8081/getId", {
         headers: headers,
       });
       console.log("方式二返回数据：", response.data);
@@ -49,7 +49,7 @@
   const fetchData2 = async () => {
     try {
       const token = getToken();
-      const response = await fetch("http://localhost:8080/getId", {
+      const response = await fetch("http://localhost:8081/getId", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
