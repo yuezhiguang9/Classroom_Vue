@@ -46,14 +46,30 @@
                     <el-input v-model="data.searchForm.user_name" placeholder="请输入姓名"></el-input>
                 </el-form-item>
                 
-                <el-form-item label="使用时间范围">
+                <el-form-item label="开始日期">
                     <el-date-picker
-                        v-model="data.searchForm.date_range"
-                        type="daterange"
-                        range-separator="至"
-                        start-placeholder="开始日期"
-                        end-placeholder="结束日期"
-                        value-format="YYYY-MM-DD">
+                        v-model="data.searchForm.start_date"
+                        type="date"
+                        placeholder="选择开始日期"
+                        value-format="YYYY-MM-DD"
+                        :editable="false"
+                        :clearable="true">
+                    </el-date-picker>
+                </el-form-item>
+                <el-form-item label="结束日期">
+                    <el-date-picker
+                        v-model="data.searchForm.end_date"
+                        type="date"
+                        placeholder="选择结束日期"
+                        value-format="YYYY-MM-DD"
+                        :editable="false"
+                        clearable
+                        :disabled-date="(time) => {
+                            if (data.searchForm.start_date) {
+                                return time.getTime() < new Date(data.searchForm.start_date).getTime();
+                            }
+                            return false;
+                        }">
                     </el-date-picker>
                 </el-form-item>
                 
@@ -122,7 +138,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue';
+import { reactive, ref, onMounted, watch } from 'vue';
 import request from '@/utils/request';
 import { ElMessage } from 'element-plus';
 import { 
@@ -159,7 +175,8 @@ const data = reactive({
     college_id: '',
     building_id: '',
     user_name: '',
-    date_range: []
+    start_date: '',
+    end_date: ''
   },
   
   // 日志管理数据
@@ -232,9 +249,11 @@ const load = async () => {
     }
       
     // 处理日期范围
-    if (data.searchForm.date_range && data.searchForm.date_range.length === 2) {
-      params.date_start = data.searchForm.date_range[0];
-      params.date_end = data.searchForm.date_range[1];
+    if (data.searchForm.start_date) {
+      params.date_start = data.searchForm.start_date;
+    }
+    if (data.searchForm.end_date) {
+      params.date_end = data.searchForm.end_date;
     }
     
     console.log('发送请求到后端，参数:', params);
@@ -292,7 +311,8 @@ const resetSearch = () => {
     college_id: '',
     building_id: '',
     user_name: '',
-    date_range: []
+    start_date: '',
+    end_date: ''
   };
   data.page = 1;
   load();
@@ -308,6 +328,17 @@ const changePage = (val) => {
   data.page = val;
   load();
 };
+
+// 监听日期范围变化，防止重置问题
+watch(() => data.searchForm.date_range, (newVal, oldVal) => {
+  // 确保日期范围是一个有效的数组
+  if (newVal && Array.isArray(newVal)) {
+    // 如果数组长度不为2，保持原值
+    if (newVal.length !== 2 && newVal.length !== 0) {
+      data.searchForm.date_range = oldVal || [];
+    }
+  }
+});
 
 onMounted(() => {
   load();
@@ -377,8 +408,16 @@ onMounted(() => {
   margin-bottom: 20px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+}
+
+.date-range-form {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
 }
 
 .role-filter-buttons {
