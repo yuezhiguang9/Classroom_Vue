@@ -28,12 +28,12 @@ export const setToken = (token, rememberMe) => {
     sessionStorage.setItem("remember_me", "false");
   }
 };
+// 新增：清除token
 export const removeToken = () => {
-  // 同时清除localStorage和sessionStorage中的token，避免残留
-  localStorage.removeItem(STORAGE_TOKEN_KEY);
-  sessionStorage.removeItem(STORAGE_TOKEN_KEY);
-  localStorage.removeItem(STORAGE_REMEMBER_KEY);
-  sessionStorage.removeItem(STORAGE_REMEMBER_KEY);
+  localStorage.removeItem("auth_token");
+  sessionStorage.removeItem("auth_token");
+  localStorage.removeItem("remember_me");
+  sessionStorage.removeItem("remember_me");
 };
 export const isLoggedIn = () => {
   // 简单判断：如果存在token则认为已登录

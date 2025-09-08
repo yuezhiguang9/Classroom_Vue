@@ -193,10 +193,7 @@
       ElMessage.warning("请输入密码");
       return false;
     }
-    if (password.value.length < 6) {
-      ElMessage.warning("密码长度不能少于6位");
-      return false;
-    }
+    
 
     return true;
   };
@@ -382,9 +379,9 @@
 
       // 7. 执行跳转
       const redirectPath = {
-        user: "/user/dashboard",
+        user: "/user/users",
         teach_sec: "/sec/listLogs",
-        class_mgr: "/mgr/classrooms",
+        class_mgr: "/mgr",
         super_admin: "/admin/users",
       };
       const targetPath = redirectPath[mapIdentityToApiType()] || "/";

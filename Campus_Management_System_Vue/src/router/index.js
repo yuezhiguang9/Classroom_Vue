@@ -32,7 +32,7 @@ const router = createRouter({
     // 教室管理员路由（移除重复定义）
     {
       path: "/mgr",
-      // component: () => import('@/components/Managements.vue'), // 若需要可取消注释
+      component: () => import('@/components/Managements.vue'), // 若需要可取消注释
       children: [
         { path: "man", component: () => import("@/views/management/Man.vue") },
         { path: "state", component: () => import("@/views/management/State.vue") },
@@ -66,11 +66,11 @@ const router = createRouter({
       },
     },
 
-    // 测试路由
-    {
-      path: "/test/tests",
-      component: () => import("../views/test.vue"),
-    },
+    // // 测试路由
+    // {
+    //   path: "/test/tests",
+    //   component: () => import("../views/test.vue"),
+    // },
 
     // 管理员路由
     {
