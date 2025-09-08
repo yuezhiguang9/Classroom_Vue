@@ -23,8 +23,8 @@
                 <el-form-item label="申请状态" style="width: 200px;">
                     <el-select v-model="data.searchForm.apply_status" placeholder="请选择状态" clearable>
                         <el-option label="待审核" value="待审核"></el-option>
-                        <el-option label="已批准" value="已批准"></el-option>
-                        <el-option label="已拒绝" value="已拒绝"></el-option>
+                        <el-option label="已通过" value="已通过"></el-option>
+                        <el-option label="已驳回" value="已驳回"></el-option>
                     </el-select>
                 </el-form-item>
                 
@@ -109,9 +109,9 @@
                         </el-tag>
                     </template>
                 </el-table-column>
-                <el-table-column label="驳回原因" prop="reject_reason">
+                <el-table-column label="驳回原因" prop="apply_reject_reason">
                     <template #default="scope">
-                        <span v-if="scope.row.apply_status === '已拒绝'">{{ scope.row.reject_reason }}</span>
+                        <span v-if="scope.row.apply_status === '已驳回'">{{ scope.row.apply_reject_reason }}</span>
                         <span v-else>-</span>
                     </template>
                 </el-table-column>
@@ -194,8 +194,8 @@ const data = reactive({
 const getStatusTagType = (status) => {
   switch(status) {
     case '待审核': return 'warning';
-    case '已批准': return 'success';
-    case '已拒绝': return 'danger';
+    case '已通过': return 'success';
+    case '已驳回': return 'danger';
     default: return 'info';
   }
 };
@@ -307,13 +307,12 @@ const load = async () => {
       if (d.recordsPage && d.recordsPage.records) {
         data.tableData = d.recordsPage.records;
         data.total = d.recordsPage.total || 0;
-        data.page = d.recordsPage.page || 1;
         data.size = d.recordsPage.size || 10;
         
-        // 调试已拒绝的记录
-        const rejectedItems = data.tableData.filter(item => item.apply_status === '已拒绝');
-        console.log('后端返回的【已拒绝】记录详情：', rejectedItems);
-        console.log('后端返回的【已拒绝】记录的 reject_reason：', rejectedItems.map(item => item.reject_reason));
+        // 调试已驳回的记录
+        const rejectedItems = data.tableData.filter(item => item.apply_status === '已驳回');
+        console.log('后端返回的【已驳回】记录详情：', rejectedItems);
+        console.log('后端返回的【已驳回】记录的 apply_reject_reason：', rejectedItems.map(item => item.apply_reject_reason));
       } else {
         console.error('后端返回的数据结构不符合预期:', d);
         data.tableData = [];
