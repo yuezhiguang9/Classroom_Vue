@@ -109,9 +109,9 @@
                         </el-tag>
                     </template>
                 </el-table-column>
-                <el-table-column label="驳回原因" prop="reject_reason">
+                 <el-table-column label="驳回原因" prop="apply_reject_reason">
                     <template #default="scope">
-                        <span v-if="scope.row.apply_status === '已拒绝'">{{ scope.row.reject_reason }}</span>
+                        <span v-if="scope.row.apply_status === '已拒绝'">{{ scope.row.apply_reject_reason }}</span>
                         <span v-else>-</span>
                     </template>
                 </el-table-column>
@@ -307,7 +307,7 @@ const load = async () => {
       if (d.recordsPage && d.recordsPage.records) {
         data.tableData = d.recordsPage.records;
         data.total = d.recordsPage.total || 0;
-        data.page = d.recordsPage.page || 1;
+        // data.page = d.recordsPage.page || 1;
         data.size = d.recordsPage.size || 10;
         
         // 调试已拒绝的记录
