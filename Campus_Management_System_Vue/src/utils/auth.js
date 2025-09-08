@@ -3,7 +3,6 @@
  * 统一管理用户token的存储、获取和清除
  */
 
-const TOKEN_KEY = 'jwtToken';
 const TOKEN_KEY = "token";
 const USER_INFO_KEY = "userInfo";
 
@@ -11,11 +10,6 @@ const USER_INFO_KEY = "userInfo";
  * 设置token到localStorage或sessionStorage
  * @param {string} token - JWT token
  * @param {boolean} remember - 是否记住（true使用localStorage，false使用sessionStorage）
- */
-export function setToken(token, remember = false) {
-  const storage = remember ? localStorage : sessionStorage;
-  storage.setItem(TOKEN_KEY, token);
-}
 
 /**
  * 获取token
@@ -33,6 +27,19 @@ export const setToken = (token, rememberMe) => {
     sessionStorage.setItem("auth_token", token);
     sessionStorage.setItem("remember_me", "false");
   }
+};
+export const removeToken = () => {
+  // 同时清除localStorage和sessionStorage中的token，避免残留
+  localStorage.removeItem(STORAGE_TOKEN_KEY);
+  sessionStorage.removeItem(STORAGE_TOKEN_KEY);
+  localStorage.removeItem(STORAGE_REMEMBER_KEY);
+  sessionStorage.removeItem(STORAGE_REMEMBER_KEY);
+};
+export const isLoggedIn = () => {
+  // 简单判断：如果存在token则认为已登录
+  const token = getToken();
+  // 实际项目中可能还需要判断token是否过期
+  return !!token; // 转为布尔值，非空token返回true
 };
 
 export const getToken = () => {
