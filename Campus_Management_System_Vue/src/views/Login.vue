@@ -843,5 +843,4 @@
   .scale-hover:hover {
     transform: scale(1.02);
   }
-  @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 </style>
