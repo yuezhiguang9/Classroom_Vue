@@ -7,26 +7,21 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@': '/src'
-    }
+      "@": "/src",
+    },
   },
   server: {
     proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
+      "/api": {
+        target: "http://localhost:8080",
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        rewrite: (path) => path.replace(/^\/api/, ""),
       },
       "/user": {
         target: "http://localhost:8080", // 修改为后端实际运行的地址，确保端口正确
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/user/, "/user"),
       },
-    }
-  },
-    resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
     },
   },
-})
+});
