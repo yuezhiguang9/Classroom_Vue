@@ -43,15 +43,10 @@ service.interceptors.response.use(
 
     // 处理401未授权错误（登录过期）
     if (error.response && error.response.status === 401) {
-      ElMessage.error("登录已过期，请重新登录");
-      // 清除认证信息（建议使用 auth.js 的 clearAuthInfo 方法统一处理）
-      localStorage.removeItem("jwtToken");
-      sessionStorage.removeItem("jwtToken");
-      localStorage.removeItem("currentUser");
-      sessionStorage.removeItem("currentUser");
-      // 跳转到登录页
-      window.location.href = "/auth/login";
-    } else {
+  ElMessage.error("登录已过期，请重新登录");
+  clearAuthInfo(); // 使用统一的清除方法
+  window.location.href = "/login";
+} else {
       ElMessage.error(error.message || "网络错误，请稍后重试");
     }
 

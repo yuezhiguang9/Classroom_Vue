@@ -3,61 +3,69 @@
  * 统一管理用户token的存储、获取和清除
  */
 
-const TOKEN_KEY = "token";
-const USER_INFO_KEY = "userInfo";
+const TOKEN_KEY = "auth_token";
+const USER_INFO_KEY = "currentUser";
+const REMEMBER_ME_KEY = "remember_me"; // 统一rememberMe的键名
 
 /**
  * 设置token到localStorage或sessionStorage
  * @param {string} token - JWT token
- * @param {boolean} remember - 是否记住（true使用localStorage，false使用sessionStorage）
+ * @param {boolean} rememberMe - 是否记住（true使用localStorage，false使用sessionStorage）
+ */
+export const setToken = (token, rememberMe) => {
+  const storage = rememberMe ? localStorage : sessionStorage;
+  storage.setItem(TOKEN_KEY, token);
+  storage.setItem(REMEMBER_ME_KEY, rememberMe.toString()); // 存储到对应的storage中
+};
+
+/**
+ * 清除token及rememberMe状态
+ */
+export const removeToken = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REMEMBER_ME_KEY);
+  sessionStorage.removeItem(REMEMBER_ME_KEY);
+};
+
+/**
+ * 判断是否已登录
+ * @returns {boolean} - 是否登录
+ */
+export const isLoggedIn = () => {
+  const token = getToken();
+  // 实际项目中建议补充token过期判断
+  return !!token;
+};
 
 /**
  * 获取token
  * @returns {string|null} - 返回token或null
  */
-// src/utils/auth.js 示例代码
-export const setToken = (token, rememberMe) => {
-  if (rememberMe) {
-    // 勾选"记住我"，存到localStorage（持久化）
-    localStorage.setItem("auth_token", token);
-    // 同时存储rememberMe状态，供getToken判断
-    localStorage.setItem("remember_me", "true");
-  } else {
-    // 不勾选，存到sessionStorage（会话级，关闭标签页失效）
-    sessionStorage.setItem("auth_token", token);
-    sessionStorage.setItem("remember_me", "false");
-  }
-};
-// 新增：清除token
-export const removeToken = () => {
-  localStorage.removeItem("auth_token");
-  sessionStorage.removeItem("auth_token");
-  localStorage.removeItem("remember_me");
-  sessionStorage.removeItem("remember_me");
-};
-export const isLoggedIn = () => {
-  // 简单判断：如果存在token则认为已登录
-  const token = getToken();
-  // 实际项目中可能还需要判断token是否过期
-  return !!token; // 转为布尔值，非空token返回true
-};
-
 export const getToken = () => {
-  // 先判断登录时的rememberMe状态，决定从哪里读取token
-  const rememberMe =
-    localStorage.getItem("remember_me") === "true" ||
-    sessionStorage.getItem("remember_me") === "true";
-
-  return rememberMe ? localStorage.getItem("auth_token") : sessionStorage.getItem("auth_token");
+  // 先检查localStorage中是否有remember_me=true（持久化登录）
+  const isLocalRemember = localStorage.getItem(REMEMBER_ME_KEY) === "true";
+  if (isLocalRemember) {
+    return localStorage.getItem(TOKEN_KEY);
+  }
+  
+  // 否则检查sessionStorage（会话级登录）
+  const isSessionRemember = sessionStorage.getItem(REMEMBER_ME_KEY) === "false";
+  if (isSessionRemember) {
+    return sessionStorage.getItem(TOKEN_KEY);
+  }
+  
+  // 都没有则返回null
+  return null;
 };
 
 /**
  * 设置用户信息
  * @param {Object} userInfo - 用户信息对象
- * @param {boolean} remember - 是否持久化存储
+ * @param {boolean} rememberMe - 是否持久化存储（建议与setToken的rememberMe保持一致）
  */
-export function setUserInfo(userInfo, remember = false) {
-  const storage = remember ? localStorage : sessionStorage;
+export function setUserInfo(userInfo, rememberMe) {
+  const storage = rememberMe ? localStorage : sessionStorage;
   storage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
 }
 
@@ -66,16 +74,21 @@ export function setUserInfo(userInfo, remember = false) {
  * @returns {Object|null} 用户信息对象或null
  */
 export function getUserInfo() {
-  const info = localStorage.getItem(USER_INFO_KEY) || sessionStorage.getItem(USER_INFO_KEY);
+  // 优先从当前登录对应的storage中读取
+  const isLocalRemember = localStorage.getItem(REMEMBER_ME_KEY) === "true";
+  const storage = isLocalRemember ? localStorage : sessionStorage;
+  
+  const info = storage.getItem(USER_INFO_KEY);
   return info ? JSON.parse(info) : null;
 }
 
 /**
- * 清除认证信息
+ * 清除所有认证信息（token+用户信息+rememberMe状态）
  */
 export function clearAuthInfo() {
-  localStorage.removeItem(TOKEN_KEY);
-  sessionStorage.removeItem(TOKEN_KEY);
+  // 直接调用removeToken清除token和rememberMe
+  removeToken();
+  // 清除用户信息
   localStorage.removeItem(USER_INFO_KEY);
   sessionStorage.removeItem(USER_INFO_KEY);
 }

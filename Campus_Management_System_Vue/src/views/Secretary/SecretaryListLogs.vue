@@ -238,11 +238,11 @@
                   <tr v-for="(item, index) in logsData" :key="index">
                     <td>{{ item.userName }}</td>
                     <td>{{ item.phone }}</td>
-                    <td>{{ item.bookTime }}</td>
-                    <td>{{ item.roomNum }}</td>
+                    <td>{{ item.book_time }}</td>
+                    <td>{{ item.room_num }}</td>
                     <td>{{ item.date }}</td>
                     <td>{{ item.purpose }}</td>
-                    <td>{{ item.personCount }}</td>
+                    <td>{{ item.person_count }}</td>
                     <td>
                       <span
                         class="status-tag"
@@ -352,11 +352,11 @@
           </div>
           <div class="detail-item">
             <span class="detail-label">预约时间：</span>
-            <span class="detail-value">{{ currentDetail.bookTime || "-" }}</span>
+            <span class="detail-value">{{ currentDetail.book_time || "-" }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">楼栋：</span>
-            <span class="detail-value">{{ currentDetail.buildingName || "-" }}</span>
+            <span class="detail-value">{{ currentDetail.building_name || "-" }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">学院：</span>
@@ -364,7 +364,7 @@
           </div>
           <div class="detail-item">
             <span class="detail-label">教室：</span>
-            <span class="detail-value">{{ currentDetail.roomNum || "-" }}</span>
+            <span class="detail-value">{{ currentDetail.room_num || "-" }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">使用日期：</span>
@@ -384,7 +384,7 @@
           </div>
           <div class="detail-item">
             <span class="detail-label">人数：</span>
-            <span class="detail-value">{{ currentDetail.personCount || "-" }}</span>
+            <span class="detail-value">{{ currentDetail.person_count || "-" }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">用途：</span>
@@ -449,6 +449,7 @@
   import { useRoute, useRouter } from "vue-router";
   import { ElMessage, ElMessageBox } from "element-plus";
   import axios from "@/utils/axios";
+  import { getToken } from "../../utils/auth";
 
   // 路由相关
   const route = useRoute();
@@ -543,8 +544,9 @@
 
   // 获取请求头（统一添加token）
   const getAuthHeaders = () => {
-    const token = localStorage.getItem("token");
-    return token ? { Authorization: token } : {};
+    const token = getToken();
+    console.log("token:", token);
+    return token;
   };
 
   // 格式化日期时间
@@ -595,7 +597,7 @@
       console.log(`当前统计周范围: ${weekRange.start} 至 ${weekRange.end}`);
 
       const response = await axios.get("/sec/getClassroomUsageStats", {
-        headers: getAuthHeaders(),
+        token: getAuthHeaders(),
       });
 
       if (response.code === 200 && response.data) {
@@ -733,6 +735,7 @@
         const responseData = response.data || {};
 
         logsData.value = responseData.records || [];
+        console.log("解析到的日志数据:", logsData.value);
 
         // pagination.value = {
         //   page: responseData.current || filter.value.page,
@@ -778,7 +781,7 @@
       return;
     }
 
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) {
       ElMessage.error("未登录，请重新登录");
       return;
@@ -792,10 +795,11 @@
         params: { apply_id: applyId },
         headers: getAuthHeaders(),
       });
+      console.log("查看详情返回的数据:", response);
 
       if ([200, 0].includes(response.code) || response.status === 200) {
         // 直接使用后端返回的完整数据对象
-        currentDetail.value = response.data || {};
+        currentDetail.value = response.data;
         console.log("获取到的完整详情数据:", currentDetail.value);
         showDetails.value = true;
       } else {
